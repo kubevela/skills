@@ -1,0 +1,34 @@
+# Third-party MCP servers the SRE skill is written against.
+#
+# This file is the source of truth for pins. `vela mcp setup` will embed a copy at release
+# time. A null `version` means the skill has not yet been evaluated against a pinned release
+# of that server; the appendices under ../servers/ were written from upstream documentation
+# on the `checked` date. Until a version is set here, client guidance must not instruct
+# users to pin, and the evaluation suite must not claim compatibility.
+#
+# Required fields per server: repo, role, transport, version, appendix, checked.
+servers:
+  kubernetes:
+    repo: https://github.com/containers/kubernetes-mcp-server
+    role: Read-only access to the cluster outside what Applications manage
+    transport: stdio
+    config: TOML with read_only = true and denied_resources for Secret and RBAC kinds; see ../servers/kubernetes.md
+    version: null
+    appendix: kubevela-sre/servers/kubernetes.md
+    checked: 2026-10-13
+  grafana:
+    repo: https://github.com/grafana/mcp-grafana
+    role: Metrics, logs, traces and alerts for teams on Grafana, Prometheus, Loki and Tempo
+    transport: stdio
+    config: Started with --disable-write; Viewer-scoped service account
+    version: null
+    appendix: kubevela-sre/servers/grafana.md
+    checked: 2026-10-13
+  datadog:
+    repo: https://docs.datadoghq.com/bits_ai/mcp_server/
+    role: Metrics, traces, logs, monitors and incidents for teams on Datadog
+    transport: http
+    config: Read-scoped application key; no incident or monitor write scopes
+    version: null
+    appendix: kubevela-sre/servers/datadog.md
+    checked: 2026-10-13

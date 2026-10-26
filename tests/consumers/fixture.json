@@ -1,0 +1,55 @@
+{
+  "items": [
+    {
+      "metadata": {"name": "two-components", "namespace": "dev"},
+      "spec": {"components": [
+        {"name": "a", "type": "webservice", "properties": {}},
+        {"name": "b", "type": "webservice", "properties": {}}
+      ]}
+    },
+    {
+      "metadata": {"name": "pinned", "namespace": "dev"},
+      "spec": {"components": [
+        {"name": "api", "type": "webservice@v3", "properties": {}}
+      ]}
+    },
+    {
+      "metadata": {"name": "trait-user", "namespace": "prod"},
+      "spec": {"components": [
+        {"name": "api", "type": "worker", "traits": [{"type": "webservice"}, {"type": "scaler"}]}
+      ]}
+    },
+    {
+      "metadata": {"name": "policy-user", "namespace": "prod"},
+      "spec": {
+        "components": [{"name": "api", "type": "worker"}],
+        "policies": [{"name": "topo", "type": "webservice"}]
+      }
+    },
+    {
+      "metadata": {"name": "step-user", "namespace": "ops"},
+      "spec": {
+        "components": [{"name": "api", "type": "worker"}],
+        "workflow": {"steps": [
+          {"name": "deploy", "type": "deploy"},
+          {"name": "group", "type": "step-group", "subSteps": [{"name": "s1", "type": "webservice"}]}
+        ]}
+      }
+    },
+    {
+      "metadata": {"name": "mixed", "namespace": "ops"},
+      "spec": {"components": [
+        {"name": "a", "type": "webservice@v2"},
+        {"name": "b", "type": "webservice"}
+      ]}
+    },
+    {
+      "metadata": {"name": "unrelated", "namespace": "dev"},
+      "spec": {"components": [{"name": "x", "type": "webservices"}]}
+    },
+    {
+      "metadata": {"name": "no-spec", "namespace": "dev"},
+      "spec": {}
+    }
+  ]
+}

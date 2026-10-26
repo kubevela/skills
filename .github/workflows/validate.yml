@@ -1,0 +1,23 @@
+name: validate
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Validator self-tests
+        run: bash tests/validator/test.sh
+      - name: Validate skills and server table
+        run: python3 scripts/validate_skills.py
+      - name: Consumer inventory tests
+        run: bash tests/consumers/test.sh
+      - name: Shell syntax
+        run: bash -n kubevela-platform-engineer/scripts/definition-consumers.sh tests/consumers/test.sh tests/validator/test.sh

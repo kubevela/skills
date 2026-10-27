@@ -69,6 +69,13 @@ incomplete; never present a partial count as the blast radius.
 
 ## Before adding a definition
 
+Label what it provides with `definition.oam.dev/provides` (for example `postgres`) when
+another definition serves the same need, and name the namespaces where it is the default
+in the `definition.oam.dev/default-for` annotation, or `*` for everywhere. Agents use these
+to pick the default and to ask users between alternatives instead of guessing. Set the
+namespace label `app.oam.dev/delivery-default` to `kubevela` or `kubernetes` where the
+platform has decided how new work is delivered.
+
 Search first. Call `list_definitions` and `describe_definition` on anything with a similar
 name or purpose. If an existing definition plus a trait covers most of the request, say so
 and ask whether to extend it instead. If the user decides to author a new one in Go,

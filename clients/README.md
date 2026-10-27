@@ -1,8 +1,9 @@
 # Client setup
 
-Snippets for loading the skills into each client and, once it ships, connecting to
-`vela mcp`. `vela mcp setup` will write these for you later; until then, copy the snippet
-for your client.
+Steps for loading the skills into each client and connecting it to `vela mcp`. The
+`kubevela` entry comes from `vela mcp config`, which prints it for the binary you run;
+nothing in `vela` writes client configuration, so these pages, not a `vela` release, track
+each client's format.
 
 | Client | File | Skills location |
 |---|---|---|
@@ -16,8 +17,8 @@ for your client.
 - The four skills work today in the CLI-assisted profile: the agent runs `vela` and
   `kubectl` and follows the same procedure. Each skill states which guarantees that
   profile lacks.
-- `vela mcp` is a proposal. The server snippets below are shaped for it but there is no
-  binary yet. Do not expect the `kubevela` server entry to connect.
+- `vela mcp` is in review in kubevela/kubevela and is not in a release yet. Build `vela`
+  from that branch to try it; `vela mcp config` then prints a working entry.
 - Third-party server versions are not yet pinned; see
   `../kubevela-sre/references/servers.yaml`. Until a version is recorded there, install
   the current release of each server and expect tool names in the appendices to need

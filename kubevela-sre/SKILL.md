@@ -66,19 +66,24 @@ Confirm the cluster and namespaces in scope with the user. Every report names th
 
 1. **Explain first.** Call `explain_application` for the affected Application. Read the
    root candidates, the impact list, the blocked workflow step, whether traffic changed,
-   the `evidence` list and the `unknowns` list. Take the **handles**: `cluster`,
-   `namespace`, `application`, `pods`, `labels`, `revision`, `appliedAt`, `window`,
-   `traceService`, `logSelector`. From here on every query uses them verbatim. In the
-   CLI-assisted profile there are no emitted `evidence` or `unknowns` lists. Derive the
-   Application handles (`cluster`, `namespace`, `application`, `labels`, `revision`,
-   `appliedAt`) from `vela status <name> -n <ns> --tree --detail` and
+   the `evidence` list and the `unknowns` list. Take the **handles** block:
+   `clusters`, `namespace`, `application`, `pods`, `labels`, `labelSelector`,
+   `componentLabels`, `metricLabels`, `revision`, `appliedAt` and `window` (`from`, `to`,
+   and the `basis` it was computed from). From here on every query uses them verbatim.
+   The server does not emit a trace service or a log selector, because both depend on
+   how your monitoring stack names things: build them from `metricLabels` and the
+   namespace using the identity mapping in the server appendix, and confirm with one
+   probe query. In the CLI-assisted profile there are no emitted `evidence`, `unknowns`
+   or `handles`. Derive the same handles (`clusters`, `namespace`, `application`,
+   `labels`, `revision`, `appliedAt`) from `vela status <name> -n <ns> --tree --detail` and
    `vela revision list <name> -n <ns>`, and `pods` from `vela status <name> -n <ns> --pod`,
    which is the only status view that lists them. If `--pod` returns nothing, report the
    `pods` handle unavailable.
    Take `window` from the alert's first trigger time and the revision's apply time, and
-   `traceService` and `logSelector` from the verified identity mapping in the server
+   the trace service and log selector from the verified identity mapping in the server
    appendix; where the mapping does not give one, report it unavailable rather than
-   inventing it. Your report says the handles were assembled by hand.
+   inventing it. Your report says the handles were assembled by hand. When an alert
+   fired before the emitted `window.from`, widen the window to the alert time and say so.
 2. **Let the evidence choose the branch.** The root candidates decide what to query next.
    Pods that never scheduled call for scheduler events, not traces that cannot exist. A
    provider condition on a managed cloud resource calls for that resource's status, not
@@ -88,9 +93,10 @@ Confirm the cluster and namespaces in scope with the user. Every report names th
    for the handles' labels over the handles' window. Build selectors from the full identity
    mapping in the server appendix, never from component name alone.
 4. **Traces for the failing path**, when request handling is implicated. Search error
-   traces for `traceService` in the window and note the top failing span.
-5. **Logs behind the span**, filtered by `logSelector` and the failing target, from
-   `window.start`. If `get_logs` returned a bounded tail and `truncated: true`, go to the
+   traces for the Application's service, from the appendix mapping, in the window and
+   note the top failing span.
+5. **Logs behind the span**, filtered by a selector built from `metricLabels` and the
+   failing target, from `window.from`. If `get_logs` returned a bounded tail and `truncated: true`, go to the
    observability server rather than paging.
 6. **Managed resources through vela, cross-checks through Kubernetes** per the access
    policy. If you fall back to the Kubernetes server, write down why.

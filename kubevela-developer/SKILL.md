@@ -1,6 +1,6 @@
 ---
 name: kubevela-developer
-description: Compose, validate and deploy KubeVela Applications through the vela MCP tools or the vela CLI. Use when the user wants to deploy, change, roll back or understand an Application, or asks what the platform can deploy.
+description: Compose, validate and deploy KubeVela Applications through the vela MCP tools or the vela CLI. Use when the user mentions KubeVela or an Application, when the repository or namespace already delivers through Applications, or when a new project starts on a cluster where KubeVela is installed. Do not use to change plain Kubernetes manifests or charts unless the user asks to migrate them.
 license: Apache-2.0
 metadata:
   version: "0.2.0"
@@ -48,6 +48,30 @@ from. Compare it with the version from step 0 below. If the minor version differ
 columns 1 and 2 and note the mismatch in your reply. If a source is unreachable, say so
 rather than filling the gap from memory.
 
+## First, decide whether this is KubeVela work
+
+Follow the practice already in place and never steer. Call `get_platform_info` with the
+namespace the user is working in, read its `practice`, and look at the repository. Then
+apply the first rule that fits:
+
+1. **The user named an approach.** Do exactly that, without comment.
+2. **They are changing something that exists.** Keep its current form. A plain Deployment
+   or chart stays as it is and this skill does not apply.
+3. **New work next to existing practice.** Follow it: Applications in the repository or a
+   `kubevela` style mean an Application; plain manifests, charts or a `kubernetes` style
+   mean plain manifests. For `mixed`, follow what sits next to the new work, or ask.
+4. **A blank start, with KubeVela installed.** If `declaredDefault` is set, use it and say
+   so. Otherwise ask once, suggesting KubeVela, and remember the answer for the project:
+   "This is a new project and KubeVela is installed on your cluster. I'd suggest
+   deploying it as a KubeVela Application: you describe the service or database you need
+   and the platform's components create the Kubernetes objects. Or I can write plain
+   Kubernetes manifests. Which would you like?" If `canCreatePlainWorkloads` is false,
+   do not offer plain manifests; say the platform deploys through KubeVela.
+5. **They ask to migrate, in either direction.** Propose the conversion and show it as a
+   diff before anything changes. Never suggest migrating unprompted.
+
+If KubeVela is not installed, do not suggest installing it.
+
 ## Always, in this order
 
 0. **Know what is running.** Once per session, call `get_platform_info` and note the
@@ -60,6 +84,13 @@ rather than filling the gap from memory.
    schema. If a parameter you want is not there, say so instead of inventing it. When the
    user asks what a definition does rather than what its parameters are, call
    `explain_definition`.
+
+   **When more than one definition could serve,** such as two that provide `postgres`,
+   call `list_definitions` with `provides` and the namespace. If one is marked `default`,
+   use it and name the alternatives. If only one fits, use it. If none is default and
+   they differ in cost, ownership or where data lives, ask the user in chat, showing for
+   each its description, what `explain_definition` says it creates, and how many
+   Applications use it. Never choose between them silently.
 2. **Render before showing.** Call `dryrun_application` with the full Application. If it
    returns field errors, fix them and call it again. Do not show the user YAML that has not
    rendered cleanly, and report the render with the four-line status below.

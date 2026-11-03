@@ -16,15 +16,33 @@ done
 
 Restart Codex and confirm all four appear in its skills list.
 
-## Servers
+## The kubevela server
+
+`vela mcp config` prints the entry for the `vela` binary you run it with, with its
+absolute path and any server flags you add, such as `--namespace team-a` or
+`--allow-write --direct-namespace dev`. Nothing is written for you; put its `command` and `args` into a `[mcp_servers.kubevela]` table in `~/.codex/config.toml`:
+
+```sh
+vela mcp config
+```
+
+```toml
+[mcp_servers.kubevela]
+command = "/absolute/path/printed/by/vela"
+args = ["mcp", "--namespace", "team-a"]
+```
+
+Copy `args` exactly as printed, including every server flag; the example above is what
+`vela mcp config --namespace team-a` prints.
+
+Start Codex from a shell pointed at the cluster you mean: the server uses the kubeconfig
+and context of the client process that starts it.
+
+## Companion servers
 
 Add to `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.kubevela]
-command = "vela"
-args = ["mcp"]
-
 [mcp_servers.kubernetes]
 command = "kubernetes-mcp-server"
 args = ["--config", "/etc/kubernetes-mcp-server/config.toml"]
@@ -35,5 +53,4 @@ args = ["--disable-write"]
 env = { GRAFANA_URL = "https://grafana.example.internal" }
 ```
 
-The `kubevela` entry will not connect until `vela mcp` ships. The Kubernetes server's TOML
-is in `../kubevela-sre/servers/kubernetes.md`.
+The Kubernetes server's TOML is in `../kubevela-sre/servers/kubernetes.md`.

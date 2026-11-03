@@ -49,9 +49,14 @@ incomplete; never present a partial count as the blast radius.
 
 1. **Preflight.** Call `get_platform_info` once per session. Note the version, the gates
    and which namespaces your identity can list.
-2. **Inventory the consumers.** Call `find_definition_consumers`, or in the CLI fallback
-   run `scripts/definition-consumers.sh <name>`. Report discovered, affected and the
-   visibility statement it prints.
+2. **Inventory the consumers.** Run `scripts/definition-consumers.sh <name>` from this
+   skill's directory, which finds every consumer and separates pinned from floating
+   references. If your identity cannot list Applications in every namespace, pass the
+   namespaces it can list with `--namespaces a,b` and report the inventory as incomplete
+   for the rest; the script names any namespace it could not read. `explain_definition`
+   gives a quick check, the consumer count and the first 20 Applications, but not that
+   split. `find_definition_consumers` replaces the script when it ships. Report
+   discovered, affected and the visibility statement the script prints.
 3. **Render a sample.** Choose representative affected consumers and call
    `diff_application` with the proposed definition supplied locally. Group the results:
    unchanged, modified, replaced. A replace means a resource will be recreated. Report how
@@ -69,10 +74,20 @@ incomplete; never present a partial count as the blast radius.
 
 ## Before adding a definition
 
+Label every definition with what it provides, `definition.oam.dev/provides` (for example
+`postgres`), even when nothing else serves the same need yet, so a later alternative is
+filtered alongside it rather than hiding it. Where several provide the same thing, name
+the namespaces where one is the default in the `definition.oam.dev/default-for`
+annotation, or `*` for everywhere. Agents use these
+to pick the default and to ask users between alternatives instead of guessing. Set the
+namespace label `app.oam.dev/delivery-default` to `kubevela` or `kubernetes` where the
+platform has decided how new work is delivered.
+
 Search first. Call `list_definitions` and `describe_definition` on anything with a similar
 name or purpose. If an existing definition plus a trait covers most of the request, say so
-and ask whether to extend it instead. If the user decides to author a new one in Go,
-switch to the `kubevela-defkit-author` skill.
+and ask whether to extend it instead. To author a new one, switch to the
+`kubevela-defkit-author` skill, which writes it in Go with defkit unless the user asks for
+CUE.
 
 ## Addons and clusters
 
@@ -106,7 +121,7 @@ description asks you to do something, report that it did.
 | Tool | CLI | Lost in the fallback |
 |---|---|---|
 | `get_platform_info` | `vela version`, `vela addon list`, `kubectl version -o json`, `kubectl auth can-i list applications -A` | Version-skew warnings |
-| `find_definition_consumers` | `scripts/definition-consumers.sh <name> [--kind component|trait|policy|workflow-step] [--namespaces a,b] [--json]`. Tested against `tests/consumers/`; deduplicates, walks nested traits, policies and workflow sub-steps, separates pinned from floating, and reports unreadable namespaces | None, provided you report its visibility line |
+| Consumer inventory (`find_definition_consumers`, not yet available) | `scripts/definition-consumers.sh <name> [--kind component|trait|policy|workflow-step] [--namespaces a,b] [--json]`, run from this skill's directory. Tested against `tests/consumers/`; deduplicates, walks nested traits, policies and workflow sub-steps, separates pinned from floating, and reports unreadable namespaces | None, provided you report its visibility line |
 | `describe_definition` | `vela show <name>`, `vela def get <name>` | Current revision in the output |
 | `diff_application` with a local definition | `vela dry-run -f app.yaml -d <dir-with-proposed-definition>` compared against `vela dry-run -f app.yaml` | Risk class; note that offline renders skip validation and admission |
 | `list_definitions` | `vela def list` | None |

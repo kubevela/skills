@@ -19,28 +19,43 @@ mapping once per incident and reuse it:
 
 | Level | KubeVela handle | Typical telemetry label after relabeling |
 |---|---|---|
-| Cluster | `cluster` | `cluster` |
+| Cluster | `clusters[]` | `cluster` |
 | Namespace | `namespace` | `namespace` |
-| Application | `labels["app.oam.dev/name"]` | `app_oam_dev_name` |
-| Component | `labels["app.oam.dev/component"]` | `app_oam_dev_component` |
-| Pod | `pods[]` | `pod` |
+| Application | `metricLabels["app_oam_dev_name"]` and `metricLabels["app_oam_dev_namespace"]` | `app_oam_dev_name`, `app_oam_dev_namespace` |
+| Component | `componentLabels[<component>]["app.oam.dev/component"]` | `app_oam_dev_component` |
+| Pod | `pods[].name` | `pod` |
+| Service for traces | not emitted | Tempo's `service.name`; usable only after the probe below finds spans |
 
 Prometheus relabels dots and slashes to underscores, so the KubeVela labels usually
-appear as above. Confirm with one `query_prometheus` instant query before building the
+appear as above; the handles' `metricLabels` already carry that form. Confirm with one `query_prometheus` instant query before building the
 range query. If a level is not retained by the backend, say so in the report.
+
+An Application in several clusters or with several pods needs every value: use a regex
+matcher such as `cluster=~"<c1>|<c2>"` and `pod=~"<p1>|<p2>"`, or one query per cluster.
+
+For traces, nothing maps an Application to a Tempo service name. Probe with
+`search_tempo_traces` for the application name as `service.name` in the window. Use the
+service only if that returns spans for the Application's namespace; otherwise report
+traces unavailable rather than guessing a service.
 
 ## Tools by intent
 
 | Intent in the SRE sequence | Tool | Notes |
 |---|---|---|
 | Find datasources | `list_datasources` | Once per session; remember the UIDs |
-| Metrics for the window | `query_prometheus` | Range query over `window.start` to `window.end` with the full identity selector, for example `{namespace="<ns>", app_oam_dev_name="<app>", app_oam_dev_component="<component>", cluster="<cluster>"}` |
+| Metrics for the window | `query_prometheus` | Range query over `window.from` to `window.to` with the full identity selector shown below this table |
 | Log volume before reading lines | `query_loki_stats` | Cheap check that the selector matches anything in the window |
-| Logs behind the span | `query_loki_logs` | Stream selector from `logSelector` plus the namespace; line filter for the failing span's target |
-| Trace search | `search_tempo_traces` | By `traceService`, error status, within the window |
+| Logs behind the span | `query_loki_logs` | Stream selector built from `metricLabels` and the namespace, for example `{namespace="team-a", app_oam_dev_name="shop"}`; line filter for the failing span's target |
+| Trace search | `search_tempo_traces` | Only for a service the probe confirmed; error status, within `window` |
 | Trace query | `query_tempo` | TraceQL for a specific span pattern once search has narrowed it |
 | Alert context | `list_alert_rules`, `get_alert_rule_by_uid` | Confirm what fired and when; use the first trigger time to tighten the window |
 | Dashboards | `search_dashboards` | Links for the report, not evidence |
+
+The full identity selector for an Application in two clusters:
+
+```promql
+{namespace="<ns>", app_oam_dev_name="<app>", app_oam_dev_component="<component>", cluster=~"<c1>|<c2>"}
+```
 
 If a tool name here is absent from the server you are connected to, list its tools and
 pick the equivalent rather than guessing arguments. Report the substitution.

@@ -1,6 +1,6 @@
 ---
 name: kubevela-developer
-description: Compose, validate and deploy KubeVela Applications through the vela MCP tools or the vela CLI. Use when the user wants to deploy, change, roll back or understand an Application, or asks what the platform can deploy.
+description: Compose, validate and deploy KubeVela Applications through the vela MCP tools or the vela CLI. Use when the user mentions KubeVela or an Application, when the repository or namespace already delivers through Applications, or when a new project starts on a cluster where KubeVela is installed. Do not use to change plain Kubernetes manifests or charts unless the user asks to migrate them.
 license: Apache-2.0
 metadata:
   version: "0.2.0"
@@ -48,9 +48,62 @@ from. Compare it with the version from step 0 below. If the minor version differ
 columns 1 and 2 and note the mismatch in your reply. If a source is unreachable, say so
 rather than filling the gap from memory.
 
+## First, decide whether this is KubeVela work
+
+Follow the practice already in place and never steer. Find out what that practice is:
+
+- **Governed MCP:** call `get_platform_info` with the namespace the user is working in and
+  read its `practice`.
+- **CLI-assisted:** read the same facts with read-only commands:
+  - KubeVela installed: `kubectl get crd applications.core.oam.dev`. If it is absent,
+    KubeVela is not installed.
+  - Applications: `kubectl get applications -n <ns> --no-headers`.
+  - Workloads no Application manages: `kubectl get deploy,sts,ds,cronjob,job -n <ns> -l
+    '!app.oam.dev/name' -o custom-columns=KIND:.kind,NAME:.metadata.name,OWNER:.metadata.ownerReferences[0].kind
+    --no-headers`. Ignore Jobs with an owner; their CronJob already counts.
+  - Declared default: `kubectl get ns <ns> -o
+    jsonpath='{.metadata.labels.app\.oam\.dev/delivery-default}'`.
+  - Permission for plain manifests: `kubectl auth can-i create <resource> -n <ns>` for
+    every kind the manifests would contain, not only Deployments.
+
+  Name the practice the way the server does: `kubevela` with Applications and no unmanaged
+  workloads, `kubernetes` with unmanaged workloads and no Applications, `mixed` with both,
+  `empty` with neither.
+- **Offline authoring:** there is no cluster, so decide from the request and the repository
+  alone.
+
+If a fact cannot be read, say the practice is unknown and ask rather than choosing. Then
+look at the repository and apply the first rule that fits:
+
+1. **The user named an approach.** Do exactly that, without comment.
+2. **They ask to migrate, in either direction.** Propose the conversion and show it as a
+   diff before anything changes. Never suggest migrating unprompted.
+3. **They are changing something that exists.** Keep its current form.
+4. **New work next to existing practice.** Follow it: Applications in the repository or a
+   `kubevela` style mean an Application; plain manifests, charts or a `kubernetes` style
+   mean plain manifests. For `mixed`, follow what sits next to the new work, or ask.
+5. **A blank start, with KubeVela installed.** If `declaredDefault` is set, use it and say
+   so. Otherwise ask once, suggesting KubeVela, and remember the answer for the project:
+   "This is a new project and KubeVela is installed on your cluster. I'd suggest
+   deploying it as a KubeVela Application: you describe the service or database you need
+   and the platform's components create the Kubernetes objects. Or I can write plain
+   Kubernetes manifests. Which would you like?" If `canCreatePlainWorkloads` is false,
+   do not offer plain manifests; say the platform deploys through KubeVela. That field
+   covers Deployments only: before offering manifests with other kinds, check them with
+   `kubectl auth can-i` where the CLI is available, or say which kinds were not checked.
+
+When the answer is plain Kubernetes (an existing Deployment or chart, a `kubernetes`
+practice or default, or the user's choice), stop here: this skill and the steps below do
+not apply. Write plain manifests in the repository's conventions and deliver them the way
+the repository already does. No KubeVela tool writes plain objects, so never use
+`apply_application` or `vela up` for them.
+
+If KubeVela is not installed, do not suggest installing it.
+
 ## Always, in this order
 
-0. **Know what is running.** Once per session, call `get_platform_info` and note the
+0. **Know what is running.** Skip this offline. Otherwise, once per session, call
+   `get_platform_info` and note the
    vela-core version, the feature gates and the cluster or context name. Mention them in
    your first reply so the user can correct you if you are pointed at the wrong cluster.
    If the server reports version skew, say so.
@@ -60,6 +113,15 @@ rather than filling the gap from memory.
    schema. If a parameter you want is not there, say so instead of inventing it. When the
    user asks what a definition does rather than what its parameters are, call
    `explain_definition`.
+
+   **When more than one definition could serve,** such as two that provide `postgres`,
+   call `list_definitions` with `provides` and the namespace. If one is marked `default`,
+   use it and name the alternatives. If only one fits, use it. If several fit and none is
+   default, ask the user in chat, showing for each its description, what
+   `explain_definition` says it creates, and how many Applications use it. The filter
+   also returns unlabelled definitions whose name or description mentions the
+   capability, with `matchedBy` set to `name` or `description`; read their descriptions to
+   confirm they fit before offering them. Never choose between them silently.
 2. **Render before showing.** Call `dryrun_application` with the full Application. If it
    returns field errors, fix them and call it again. Do not show the user YAML that has not
    rendered cleanly, and report the render with the four-line status below.
@@ -78,9 +140,13 @@ rather than filling the gap from memory.
    description. In `gated` mode, give the exact resume command and say who can run it. In
    `direct` mode the client shows the user a confirmation the server wrote from the diff;
    never answer it, and never present the step 4 answer as a substitute for it. After acceptance,
-   poll `get_application` and report health and endpoints. If the server refused `direct`
-   because the client cannot prompt, nothing was applied: say so and offer the modes the
-   response names. If it downgraded a HIGH risk change to `gated`, report that mode and the
+   poll `get_application` and report health. `get_application` does not return endpoints
+   yet: where you can run the CLI, read them with `vela status <name> -n <ns> --endpoint`;
+   with MCP tools only, say the endpoints are not available from the tools.
+   If the server refused `direct`,
+   whether because the client cannot prompt, the diff used local definitions, the render
+   writes outside the allowed namespaces, or the workflow runs steps the diff cannot see,
+   nothing was applied: say which, and offer `gitops`. If it downgraded a HIGH risk change to `gated`, report that mode and the
    resume command.
 7. **Human approval gates stay with humans.** Never call `resume_workflow`,
    `suspend_workflow` or `terminate_workflow`, whether or not the user asks. Give the

@@ -1,8 +1,9 @@
 # Client setup
 
-Snippets for loading the skills into each client and, once it ships, connecting to
-`vela mcp`. `vela mcp setup` will write these for you later; until then, copy the snippet
-for your client.
+Steps for loading the skills into each client and connecting it to `vela mcp`. The
+`kubevela` entry comes from `vela mcp config`, which prints it for the binary you run;
+nothing in `vela` writes client configuration, so these pages, not a `vela` release, track
+each client's format.
 
 | Client | File | Skills location |
 |---|---|---|
@@ -16,8 +17,10 @@ for your client.
 - The four skills work today in the CLI-assisted profile: the agent runs `vela` and
   `kubectl` and follows the same procedure. Each skill states which guarantees that
   profile lacks.
-- `vela mcp` is a proposal. The server snippets below are shaped for it but there is no
-  binary yet. Do not expect the `kubevela` server entry to connect.
+- `vela mcp` is in review in kubevela/kubevela#7503 and is not in a release yet. To try
+  it, build `vela` from that pull request's branch, `feat/vela-mcp` on
+  github.com/anoop2811/kubevela, with `make vela-cli`; `vela mcp config` then prints a
+  working entry.
 - Third-party server versions are not yet pinned; see
   `../kubevela-sre/references/servers.yaml`. Until a version is recorded there, install
   the current release of each server and expect tool names in the appendices to need
@@ -26,7 +29,8 @@ for your client.
 ## Permissions every snippet assumes
 
 - `vela mcp` starts read-only. `--allow-write` only where the mode policy has been
-  reviewed; `--allow-resume` never outside a single-user sandbox.
+  reviewed. There is no resume tool; a person resumes a paused workflow with
+  `vela workflow resume`.
 - The Kubernetes MCP server runs with a TOML config setting `read_only = true` and
   denying Secret and RBAC kinds; see `../kubevela-sre/servers/kubernetes.md`. It is
   started with `--config`, not with flags.

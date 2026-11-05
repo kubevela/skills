@@ -53,8 +53,8 @@ whenever you refresh them. A reference without a `Source:` line is not accepted.
 
 When a third-party server's tool names or configuration change, update the appendix, the
 `config` and `checked` fields in `kubevela-sre/references/servers.yaml`, and the client
-snippets in the same pull request. Once the evaluation suite exists, `version` moves only
-when layer 1 passes against the new release.
+snippets in the same pull request. `version` moves only when layer 1 of the
+[evaluation suite](eval/README.md) passes against the new release.
 
 ## Style
 

@@ -214,7 +214,7 @@ each command gives you and, in the last column, which guarantee of the MCP path 
 | `dryrun_application` | `vela dry-run -f app.yaml` (add `-d <dir>` for local definitions, `--offline` with no cluster) | With `--offline`: Application validation and admission |
 | `diff_application` | `vela live-diff -f app.yaml` | Risk class and reasons; the diff token |
 | `apply_application` | See "CLI-assisted writes" | Token binding, mode policy, server-side authorization check |
-| `get_application` | `vela status <name> -n <ns>`, `vela status <name> --endpoint` | Envelope with `observedAt` and `source`; live `endpoints`, `handles` and `unknowns` |
+| `get_application` | `vela status <name> -n <ns>`, `vela status <name> --endpoint` | Envelope with `observedAt` and `source`; the correlation `handles` and `unknowns`. Endpoints stay available through `vela status <name> --endpoint` |
 | `explain_application` | `vela status <name> -n <ns> --tree --detail`, then `kubectl get events -n <ns> --field-selector involvedObject.kind=<kind>,involvedObject.name=<name>` for each unhealthy resource it lists, with the kind taken from the tree so same-named objects of another kind do not mix in; for anything beyond a first look, switch to the `kubevela-sre` skill | Evidence list, unknowns, dependency ordering and handles; say they were assembled by hand |
 | `get_workflow` | `vela workflow status <name> -n <ns>` | None |
 | `list_clusters`, `list_addons` | `vela cluster list`, `vela addon list` | None |

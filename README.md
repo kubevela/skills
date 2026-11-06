@@ -18,8 +18,8 @@ plain `vela` CLI through the CLI-assisted profile described below.
   provides. The SRE skill's metrics, traces and log-search steps need an observability
   MCP server in every profile; there is no CLI substitute, and the skill says so. The
   skills are reviewed procedures; no automated evaluation runs against them.
-- `kubevela-sre/references/servers.yaml` records the third-party server versions the
-  appendices were checked against and when. It does not pin them.
+- `kubevela-sre/references/servers.yaml` records, for each third-party server, the date its
+  appendix was checked. Every `version` there is empty, so no server release is pinned.
 
 ## Operating profiles
 

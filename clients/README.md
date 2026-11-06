@@ -20,8 +20,8 @@ each client's format.
 - `vela mcp` is part of `vela` built from the `master` branch of
   github.com/kubevela/kubevela with `make vela-cli`; `vela mcp config` prints a working
   entry.
-- `../kubevela-sre/references/servers.yaml` records the version each appendix was checked
-  against and pins none. Install the current release of each server and check its tool
+- `../kubevela-sre/references/servers.yaml` records the date each appendix was checked;
+  every `version` there is empty, so no server release is pinned. Install the current release of each server and check its tool
   names against the appendix.
 
 ## Permissions every snippet assumes

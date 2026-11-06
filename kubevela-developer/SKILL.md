@@ -110,7 +110,9 @@ If KubeVela is not installed, do not suggest installing it.
 1. **Discover before drafting.** Call `list_definitions`, then `describe_definition` for
    every component, trait, policy and workflow-step type you intend to use, including the
    steps of any explicit workflow you write. Use only parameters present in the returned
-   schema. If a parameter you want is not there, say so instead of inventing it. When the
+   schema. Its `example` is a minimal draft to start from: replace every path in
+   `placeholders` with a real value. If a parameter you want is not there, say so instead
+   of inventing it. When the
    user asks what a definition does rather than what its parameters are, call
    `explain_definition`.
 
@@ -140,9 +142,9 @@ If KubeVela is not installed, do not suggest installing it.
    description. In `gated` mode, give the exact resume command and say who can run it. In
    `direct` mode the client shows the user a confirmation the server wrote from the diff;
    never answer it, and never present the step 4 answer as a substitute for it. After acceptance,
-   poll `get_application` and report health. `get_application` does not return endpoints
-   yet: where you can run the CLI, read them with `vela status <name> -n <ns> --endpoint`;
-   with MCP tools only, say the endpoints are not available from the tools.
+   poll `get_application` and report health and the `endpoints` it lists. An endpoint
+   marked `internal` is only reachable from inside the cluster; say so. If `unknowns`
+   names endpoints it could not read, report that rather than guessing an address.
    If the server refused `direct`,
    whether because the client cannot prompt, the diff used local definitions, the render
    writes outside the allowed namespaces, or the workflow runs steps the diff cannot see,
@@ -212,7 +214,7 @@ each command gives you and, in the last column, which guarantee of the MCP path 
 | `dryrun_application` | `vela dry-run -f app.yaml` (add `-d <dir>` for local definitions, `--offline` with no cluster) | With `--offline`: Application validation and admission |
 | `diff_application` | `vela live-diff -f app.yaml` | Risk class and reasons; the diff token |
 | `apply_application` | See "CLI-assisted writes" | Token binding, mode policy, server-side authorization check |
-| `get_application` | `vela status <name> -n <ns>`, `vela status <name> --endpoint` | Envelope with `observedAt` and `source` |
+| `get_application` | `vela status <name> -n <ns>`, `vela status <name> --endpoint` | Envelope with `observedAt` and `source`; the correlation `handles` and `unknowns`. Endpoints stay available through `vela status <name> --endpoint` |
 | `explain_application` | `vela status <name> -n <ns> --tree --detail`, then `kubectl get events -n <ns> --field-selector involvedObject.kind=<kind>,involvedObject.name=<name>` for each unhealthy resource it lists, with the kind taken from the tree so same-named objects of another kind do not mix in; for anything beyond a first look, switch to the `kubevela-sre` skill | Evidence list, unknowns, dependency ordering and handles; say they were assembled by hand |
 | `get_workflow` | `vela workflow status <name> -n <ns>` | None |
 | `list_clusters`, `list_addons` | `vela cluster list`, `vela addon list` | None |

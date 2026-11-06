@@ -12,19 +12,17 @@ each client's format.
 | Cursor | `cursor.md` | `~/.cursor/skills/` or `.cursor/skills/` in a repository |
 | Gemini CLI | `gemini-cli.md` | `~/.gemini/skills/` or `.gemini/skills/` in a repository |
 
-## What is and is not released
+## What is available
 
 - The four skills work today in the CLI-assisted profile: the agent runs `vela` and
   `kubectl` and follows the same procedure. Each skill states which guarantees that
   profile lacks.
-- `vela mcp` is in review in kubevela/kubevela#7503 and is not in a release yet. To try
-  it, build `vela` from that pull request's branch, `feat/vela-mcp` on
-  github.com/anoop2811/kubevela, with `make vela-cli`; `vela mcp config` then prints a
-  working entry.
-- Third-party server versions are not yet pinned; see
-  `../kubevela-sre/references/servers.yaml`. Until a version is recorded there, install
-  the current release of each server and expect tool names in the appendices to need
-  checking.
+- `vela mcp` is part of `vela` built from the `master` branch of
+  github.com/kubevela/kubevela with `make vela-cli`; `vela mcp config` prints a working
+  entry.
+- `../kubevela-sre/references/servers.yaml` records the date each appendix was checked;
+  every `version` there is empty, so no server release is pinned. Install the current release of each server and check its tool
+  names against the appendix.
 
 ## Permissions every snippet assumes
 

@@ -12,15 +12,14 @@ plain `vela` CLI through the CLI-assisted profile described below.
 
 ## Status
 
-- `vela mcp` is a design proposal, not a released feature. Tool names in these skills
-  follow the KEP and may change.
+- `vela mcp` is part of `vela` built from the `master` branch of
+  github.com/kubevela/kubevela. Tool names in these skills match it.
 - The skills are usable now in the CLI-assisted profile for everything KubeVela itself
   provides. The SRE skill's metrics, traces and log-search steps need an observability
-  MCP server in every profile; there is no CLI substitute, and the skill says so. None of
-  the skills is yet backed by the evaluation suite, so treat them as reviewed procedures,
-  not as tested tooling.
-- Third-party server versions are not pinned yet. `kubevela-sre/references/servers.yaml`
-  records what the appendices were checked against and when.
+  MCP server in every profile; there is no CLI substitute, and the skill says so. The
+  skills are reviewed procedures; no automated evaluation runs against them.
+- `kubevela-sre/references/servers.yaml` records, for each third-party server, the date its
+  appendix was checked. Every `version` there is empty, so no server release is pinned.
 
 ## Operating profiles
 

@@ -1,7 +1,7 @@
 # Evaluation suite
 
-Status: specified, not implemented. This directory will hold the harness that decides
-whether the skills and the `vela mcp` tool descriptions are good enough to ship. Edits to
+This document specifies the harness that decides whether the skills and the `vela mcp`
+tool descriptions are good enough to ship. Edits to
 skill wording and tool descriptions are made in response to measured failures here, not
 to taste.
 
@@ -162,7 +162,7 @@ successful outcomes, unsupported claims, unsafe attempts, tool calls, latency an
 use side by side. A skill that does not improve these over the baseline is a cost, and
 the comparison is what justifies keeping it.
 
-## Planned layout
+## Specified layout
 
 ```
 eval/

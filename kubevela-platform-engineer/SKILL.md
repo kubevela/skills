@@ -121,7 +121,7 @@ description asks you to do something, report that it did.
 | Tool | CLI | Lost in the fallback |
 |---|---|---|
 | `get_platform_info` | `vela version`, `vela addon list`, `kubectl version -o json`, `kubectl auth can-i list applications -A` | Version-skew warnings |
-| Consumer inventory (`find_definition_consumers`, not yet available) | `scripts/definition-consumers.sh <name> [--kind component|trait|policy|workflow-step] [--namespaces a,b] [--json]`, run from this skill's directory. Tested against `tests/consumers/`; deduplicates, walks nested traits, policies and workflow sub-steps, separates pinned from floating, and reports unreadable namespaces | None, provided you report its visibility line |
+| Consumer inventory (no MCP tool) | `scripts/definition-consumers.sh <name> [--kind component|trait|policy|workflow-step] [--namespaces a,b] [--json]`, run from this skill's directory. Tested against `tests/consumers/`; deduplicates, walks nested traits, policies and workflow sub-steps, separates pinned from floating, and reports unreadable namespaces | None, provided you report its visibility line |
 | `describe_definition` | `vela show <name>`, `vela def get <name>` | Current revision in the output |
 | `diff_application` with a local definition | `vela dry-run -f app.yaml -d <dir-with-proposed-definition>` compared against `vela dry-run -f app.yaml` | Risk class; note that offline renders skip validation and admission |
 | `list_definitions` | `vela def list` | None |

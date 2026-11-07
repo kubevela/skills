@@ -172,8 +172,9 @@ apply fails.
   Crossplane, `spec.forProvider.region` is required, so set it from a parameter or the
   platform's default, and take credentials from `spec.providerConfigRef` (by default the
   `ClusterProviderConfig` named `default`), never from a parameter. On Config Connector,
-  the project comes from the `cnrm.cloud.google.com/project-id` namespace annotation or
-  the ConfigConnectorContext, and location is a spec field where the CRD declares one.
+  use the CRD's `projectRef` or project field where it declares one; otherwise the
+  project comes from the `cnrm.cloud.google.com/project-id` namespace annotation or the
+  ConfigConnectorContext. Location is a spec field where the CRD declares one.
 - **Missing controllers and packages.** A lever can need a controller that is not
   installed: the service's provisioner itself, another ACK controller for a kind the
   resource references (a KMS key for bucket encryption), or another Crossplane provider

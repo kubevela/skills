@@ -171,17 +171,31 @@ apply fails.
 - **Missing controllers and packages.** A lever can need a controller that is not
   installed: the service's provisioner itself, another ACK controller for a kind the
   resource references (a KMS key for bucket encryption), or another Crossplane provider
-  package. When you find one, first check whether this session may install it:
-  `kubectl auth can-i create deployments -n <controller namespace>` and
-  `kubectl auth can-i create customresourcedefinitions`. Then ask; never decide alone.
+  package. What can be offered depends on which is missing. An auxiliary lever's
+  controller can be installed or its parameter left out; when the service's own
+  provisioner is missing there is no resource shape to author against, so the choices
+  are installing it, switching family through the ask above, or not authoring yet — a
+  dropped parameter cannot stand in for it. Before offering an install, check whether
+  this session may perform it: `kubectl auth can-i create deployments -n <controller
+  namespace>` and `kubectl auth can-i create customresourcedefinitions` are the first
+  probes, and a yes is not yet sufficient — render the chart or package manifests and
+  check what they actually create (`helm template ... | kubectl apply --dry-run=server
+  -f -`, or `kubectl auth can-i` per rendered kind and verb) before treating write
+  access as established. Then ask; never decide alone.
   - With write permission, ask the user one question: install the missing controller or
-    package now, or author the definition without that parameter. Install only after they
-    choose to, at the latest version compatible with the running cluster.
-  - Without write permission, ask whether to leave the parameter out, and give the exact
-    install command for someone with access to run, pinned to the latest compatible
-    version looked up from the chart or package registry at that moment, never from
-    memory: for ACK, `helm install ack-<service> oci://public.ecr.aws/aws-controllers-k8s/<service>-chart --version <looked-up>`;
-    for Crossplane, a `Provider` object pinned to the package version.
+    package now, or — for an auxiliary lever only — author the definition without that
+    parameter. Install only after they choose to, at the latest version compatible with
+    the running cluster.
+  - Without write permission, ask whether to leave the parameter out (auxiliary levers
+    only), and give the exact install command for someone with access to run, pinned to
+    the latest compatible version looked up from the chart or package registry at that
+    moment, never from memory: for ACK,
+    `helm install ack-<service> oci://public.ecr.aws/aws-controllers-k8s/<service>-chart --version <looked-up>`;
+    for Crossplane, `kubectl apply` of a `pkg.crossplane.io/v1` `Provider` manifest whose
+    `spec.package` pins the provider image to the looked-up version; for Config
+    Connector, `gcloud container clusters update <cluster> --update-addons ConfigConnector=ENABLED`
+    on GKE, or the configconnector-operator bundle pinned to the looked-up release
+    elsewhere.
   Either way, record the outcome: a parameter left out this way appears in the coverage
   summary as the gap kind "not installed", naming the controller or package that would
   provide it, and the decision is written into the module's docs per "Coverage summary
@@ -232,7 +246,8 @@ install away, by whoever has the access.
 
 Below the table, two lines name the sources: the API doc URL with the date it was
 fetched, and the controller image and version the CRD came from. Close with one sentence
-telling the user which gaps they can ask you to fix (the "not exposed" rows) and which
+telling the user which gaps they can ask you to fix (the "not exposed" rows), which need
+a controller or package installed first, naming it (the "not installed" rows), and which
 need an upstream controller release (the "not in CRD" rows).
 
 The table and the decisions behind it also live in the module, not only in chat: write
@@ -252,8 +267,9 @@ candidate instead of arguing in prose:
 |---|---|---|---|
 
 Build each candidate's column the same way as the coverage summary: from the installed
-CRD when it is on the cluster, otherwise from the candidate's published CRDs at its
-latest release, marked "not installed, not server-checked". The same API reference
+CRD when it is on the cluster, otherwise from the candidate's published CRDs at the
+latest release compatible with the running cluster — the same rule the install flow
+uses — marked "not installed, not server-checked". The same API reference
 supplies the lever rows for every column, so the table shows exactly which levers each
 controller can and cannot reach. Present the table and let the user decide; the default
 changes only when they say so, and a switch is recorded in the module docs with the

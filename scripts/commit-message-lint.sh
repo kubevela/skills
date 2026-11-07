@@ -12,7 +12,8 @@ set -euo pipefail
 #      - subject: no trailing period
 #      - body: max 6 bullets, each bullet <= 25 words
 #   2. Verification claims carry their evidence
-#      - no "verified"/"fixed"/"works" claim without command + output citation
+#      - no "verified"/"fixed"/"works"/"tested"/"validated" claim without
+#        command + output citation
 #      - "written but NOT verified" is always acceptable
 #
 # Usage:
@@ -150,27 +151,32 @@ while IFS= read -r LINE; do
   CLAIMS_VERIFICATION=false
   # Word-bounded so "frameworks" isn't read as a "works" claim, "prefixed" as
   # "fixed", etc. BSD grep lacks \b, so match on non-word neighbours / bounds.
-  if echo "$LINE" | grep -qiE '(^|[^[:alnum:]_])(verified|fixed|works)([^[:alnum:]_]|$)'; then
+  if echo "$LINE" | grep -qiE '(^|[^[:alnum:]_])(verified|fixed|works|tested|validated)([^[:alnum:]_]|$)'; then
     # "NOT verified" exempts the unverified statement — not every other claim that
     # happens to share the line. Strip the hedged phrases, then see whether a
     # claim remains. Lowercase first: GNU sed's /I flag is not available on BSD
     # sed, so fold the case instead of relying on it.
     RESIDUAL="$(printf '%s' "$LINE" | tr '[:upper:]' '[:lower:]' \
-      | sed -E 's/not[[:space:]]+verified//g; s/unverified//g; s/not_verified//g')"
-    if ! echo "$RESIDUAL" | grep -qE '(^|[^[:alnum:]_])(verified|fixed|works)([^[:alnum:]_]|$)'; then
+      | sed -E 's/not[[:space:]]+(verified|tested|validated)//g; s/un(verified|tested|validated)//g; s/not_(verified|tested|validated)//g')"
+    if ! echo "$RESIDUAL" | grep -qE '(^|[^[:alnum:]_])(verified|fixed|works|tested|validated)([^[:alnum:]_]|$)'; then
       PREV_LINE="$LINE"
       continue
     fi
     # A bare "Verified:" header is only acceptable when the contiguous block
     # beneath it actually carries the evidence.
-    if echo "$LINE" | grep -qE '^[[:space:]]*(Verified|Fixed|Works):[[:space:]]*$'; then
+    if echo "$LINE" | grep -qE '^[[:space:]]*(Verified|Fixed|Works|Tested|Validated):[[:space:]]*$'; then
       EVIDENCE_BLOCK="$(printf '%s\n' "$REST_LINES" | sed -n '/^[[:space:]]*$/q;p')"
-      if printf '%s\n' "$EVIDENCE_BLOCK" | grep -qE '(`[^`]+`|→|exit:|go test|go vet|grep |rg |find |ls |git |cat |sed |make |vela |kubectl )'; then
+      # The outcome must live outside inline code: strip backtick spans so a path
+      # like `go test ./ok` cannot satisfy the output half of the contract.
+      EVIDENCE_BLOCK_STRIPPED="$(printf '%s\n' "$EVIDENCE_BLOCK" | sed -E 's/`[^`]*`//g')"
+      if printf '%s\n' "$EVIDENCE_BLOCK" | grep -qE "$EVIDENCE_CMD_RE" \
+         && { printf '%s\n' "$EVIDENCE_BLOCK_STRIPPED" | grep -qE "$EVIDENCE_OUTCOME_STRONG_RE" \
+              || printf '%s\n' "$EVIDENCE_BLOCK_STRIPPED" | grep -qE "$EVIDENCE_OUTCOME_COUNT_RE"; }; then
         PREV_LINE="$LINE"
         continue
       fi
-      echo "COMMIT-LINT FAIL: a bare '$LINE' header with no evidence beneath it:"
-      echo "  Put the command and its output on the following lines, or write"
+      echo "COMMIT-LINT FAIL: a bare '$LINE' header without command + output beneath it:"
+      echo "  Put the command and what it produced on the following lines, or write"
       echo "  'written but NOT verified'."
       ERRORS=$((ERRORS + 1))
       PREV_LINE="$LINE"
@@ -198,7 +204,10 @@ while IFS= read -r LINE; do
     HAS_COMMAND=false
     HAS_OUTCOME=false
     if echo "$EVIDENCE_WINDOW" | grep -qE "$EVIDENCE_CMD_RE"; then HAS_COMMAND=true; fi
-    if echo "$EVIDENCE_WINDOW" | grep -qE "$EVIDENCE_OUTCOME_STRONG_RE"; then
+    # Outcomes must live outside inline code: strip backtick spans first so a
+    # cited path like `go test ./ok` cannot pass as the output it never printed.
+    EVIDENCE_WINDOW_STRIPPED="$(printf '%s\n' "$EVIDENCE_WINDOW" | sed -E 's/`[^`]*`//g')"
+    if echo "$EVIDENCE_WINDOW_STRIPPED" | grep -qE "$EVIDENCE_OUTCOME_STRONG_RE"; then
       HAS_OUTCOME=true
     elif printf '%s\n' "$EVIDENCE_ORDERED" |
          awk -v cmd="$EVIDENCE_CMD_RE" -v cnt="$EVIDENCE_OUTCOME_COUNT_RE" \

@@ -20,7 +20,10 @@ jobs:
       - name: Consumer inventory tests
         run: bash tests/consumers/test.sh
       - name: Shell syntax
-        run: bash -n kubevela-platform-engineer/scripts/definition-consumers.sh tests/consumers/test.sh tests/validator/test.sh scripts/commit-message-lint.sh
+        run: |
+          for script in kubevela-platform-engineer/scripts/definition-consumers.sh tests/consumers/test.sh tests/validator/test.sh scripts/commit-message-lint.sh; do
+            bash -n "$script"
+          done
   commit-lint:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

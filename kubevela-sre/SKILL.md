@@ -48,7 +48,7 @@ and record the source in the report when a claim depends on it.
 | ApplicationRevision status | `kubectl explain applicationrevision.status --recursive`; the live object via `kubectl get applicationrevision <n>-v<N> -n <ns> -o yaml` | same | `references/status-shapes.md` |
 | Phase and condition values, not just field names | the constants in kubevela/kubevela at that tag: `apis/core.oam.dev/common/types.go` for Application phases, `api/v1alpha1/types.go` in kubevela/workflow for step phases; the live object for what is observed now | same | the values quoted in `references/status-shapes.md` descriptions, where the CRD lists them |
 | ResourceTracker and Workflow spec | `kubectl explain resourcetracker.spec --recursive`, `kubectl explain workflow --recursive` (Workflow declares `steps` and `mode` at the top level, not under `spec`) | same | `references/status-shapes.md` |
-| Provider and operator resource conditions (Crossplane, Terraform, others) | `kubectl explain <kind>.status` on the cluster that runs them; the live object through `get_managed_resource` | the provider's CRDs at its installed version | none |
+| Provider and operator resource conditions (ACK, Config Connector, Crossplane, Terraform, others) | `kubectl explain <kind>.status` on the cluster that runs them; the live object through `get_managed_resource` | the provider's CRDs at its installed version | none |
 | Telemetry labels and tag names | one probe query against the observability server | the server appendix's identity mapping | `servers/grafana.md`, `servers/datadog.md` |
 | Which features and gates are on | `get_platform_info` | release notes for that version | none |
 

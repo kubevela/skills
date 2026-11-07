@@ -1,6 +1,6 @@
 ---
 name: kubevela-defkit-author
-description: Author KubeVela definitions in Go with defkit by default, generate and check them with the defkit module commands, render a sample Application, have the API server validate the rendered objects, and deliver by pull request. Use when the user wants a new component, trait, policy or workflow step, including one that provisions a cloud service such as S3, DynamoDB or Aurora, or wants to port an existing CUE definition to Go. Write CUE X-Definitions by hand only when the user asks for CUE.
+description: Author KubeVela definitions in Go with defkit by default, generate and check them with the defkit module commands, render a sample Application, have the API server validate the rendered objects, and deliver by pull request. Use when the user wants a new component, trait, policy or workflow step, including one that provisions a cloud service such as S3, DynamoDB or Aurora on AWS, or GCS, Pub/Sub or Cloud SQL on GCP, or wants to port an existing CUE definition to Go. Write CUE X-Definitions by hand only when the user asks for CUE.
 license: Apache-2.0
 metadata:
   version: "0.3.0"
@@ -147,7 +147,8 @@ apply fails.
   guidance document and version followed in the pull request.
 - **Shape.** Build parameters only from the fields in the returned `resource.spec`, and
   use `resource.apiVersion` for the output. A Crossplane managed resource keeps its fields
-  under `spec.forProvider`. Never fill a field from memory. Without the
+  under `spec.forProvider`; a Config Connector resource keeps them directly under `spec`.
+  Never fill a field from memory. Without the
   MCP tools, read the schema with
   `kubectl get crd <plural>.<group> -o jsonpath='{.spec.versions[?(@.storage==true)].schema.openAPIV3Schema}'`,
   or from the controller's release at a pinned version. Record the provisioner and its
@@ -156,18 +157,23 @@ apply fails.
   parameter. Take the name of a Kubernetes Secret and the data key inside it that holds the
   credential, and set the CRD's secret reference field: on ACK, such as `masterUserPassword`
   on a DBCluster; on Crossplane, the `...SecretRef` field under `spec.forProvider`, such as
-  `masterPasswordSecretRef` with `name` and `key` on an RDS Cluster.
+  `masterPasswordSecretRef` with `name` and `key` on an RDS Cluster; on Config Connector,
+  the field's `valueFrom.secretKeyRef`, such as `spec.password.valueFrom.secretKeyRef` on
+  an SQLUser.
 - **Health and status.** Use the rule `resource.health` gives. An ACK resource is ready
   when its `ACK.ResourceSynced` condition is `True`; surface
   `status.ackResourceMetadata.arn` and any endpoint in the custom status. A Crossplane
-  managed resource is ready when its `Ready` and `Synced` conditions are `True`.
+  managed resource is ready when its `Ready` and `Synced` conditions are `True`. A Config
+  Connector resource is ready when its `Ready` condition is `True` with reason `UpToDate`.
 - **Several resources.** Aurora needs a subnet group, a cluster and at least one instance.
   Emit them as outputs of one component, and ask before splitting them.
 - **Region and account.** On ACK they come from the controller's configuration for the
   namespace, not from definition parameters, unless the platform team says otherwise. On
   Crossplane, `spec.forProvider.region` is required, so set it from a parameter or the
   platform's default, and take credentials from `spec.providerConfigRef` (by default the
-  `ClusterProviderConfig` named `default`), never from a parameter.
+  `ClusterProviderConfig` named `default`), never from a parameter. On Config Connector,
+  the project comes from the `cnrm.cloud.google.com/project-id` namespace annotation or
+  the ConfigConnectorContext, and location is a spec field where the CRD declares one.
 - **Missing controllers and packages.** A lever can need a controller that is not
   installed: the service's provisioner itself, another ACK controller for a kind the
   resource references (a KMS key for bucket encryption), or another Crossplane provider

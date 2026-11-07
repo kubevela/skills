@@ -146,7 +146,10 @@ apply fails.
   region under `spec.forProvider` and credentials from the ProviderConfig). Name the
   guidance document and version followed in the pull request.
 - **Shape.** Build parameters only from the fields in the returned `resource.spec`, and
-  use `resource.apiVersion` for the output. A Crossplane managed resource keeps its fields
+  use `resource.apiVersion` for the output. Expose every spec field the installed CRD
+  covers by default; narrowing the surface is the exception, done when the user asks for
+  it or a field is a genuine foot-gun, and every omission appears in the coverage summary
+  as "not exposed" with its reason in the module docs. A Crossplane managed resource keeps its fields
   under `spec.forProvider`; a Config Connector resource keeps them directly under `spec`.
   Never fill a field from memory. Without the
   MCP tools, read the schema with
@@ -207,6 +210,18 @@ apply fails.
   summary as the gap kind "not installed", naming the controller or package that would
   provide it, and the decision is written into the module's docs per "Coverage summary
   for cloud services", not only said in chat.
+- **Bootstrap objects.** Objects the definition's resources depend on — a Crossplane
+  `ProviderConfig`, XRD or Composition, a `ConfigConnectorContext`, an ACK controller's
+  configuration — are bootstrap, not component output, and never belong in Go code:
+  `defkit.Register` only registers the definition with the generation tooling and runs
+  during `go test` and codegen on machines that must not touch a cluster. Ship them in
+  the module's `module.yaml` lifecycle hooks (`hooks.preApply`, executed by
+  `vela def apply-module`, which can apply manifests and wait for readiness) when the
+  module should be self-contained, or in the platform's addon or GitOps layer when the
+  object is shared. Never emit a shared singleton from a component template: two
+  components owning one `ProviderConfig` fight over it, and deleting the first
+  Application garbage-collects it from under the rest. An object genuinely shared across
+  Applications needs the `shared-resource` policy and one named owner.
 - **Coverage summary.** The delivery message for a cloud-service definition ends with
   the coverage table defined in "Coverage summary for cloud services" below. It is a
   required part of the deliverable, like the render report, not an optional extra.

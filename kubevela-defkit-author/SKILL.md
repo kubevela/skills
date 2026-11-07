@@ -164,7 +164,9 @@ apply fails.
   the field's `valueFrom.secretKeyRef`, such as `spec.password.valueFrom.secretKeyRef` on
   an SQLUser.
 - **Health and status.** Use the rule `resource.health` gives. An ACK resource is ready
-  when its `ACK.ResourceSynced` condition is `True`; surface
+  when its `ACK.ResourceSynced` condition is `True` and its `ACK.Terminal` condition is
+  absent or not `True` — Terminal halts reconciliation while Synced keeps its last
+  value, so a Synced-only health check reports a dead resource as ready. Surface
   `status.ackResourceMetadata.arn` and any endpoint in the custom status. A Crossplane
   managed resource is ready when its `Ready` and `Synced` conditions are `True`. A Config
   Connector resource is ready when its `Ready` condition is `True` with reason `UpToDate`.
@@ -225,6 +227,22 @@ apply fails.
 - **Coverage summary.** The delivery message for a cloud-service definition ends with
   the coverage table defined in "Coverage summary for cloud services" below. It is a
   required part of the deliverable, like the render report, not an optional extra.
+- **Levers are proven at runtime, not inferred.** The API server check validates
+  shape and says nothing about behaviour. A lever counts as working only after it
+  was exercised through the provisioner against its endpoint and read back through
+  the service's own API (the emulator's, in tests) — a bucket's versioning through
+  GetBucketVersioning, a table's key schema through DescribeTable. The provisioner's
+  Synced condition alone is not proof, twice over. First, ACK conditions carry no
+  observedGeneration, so after any spec change treat a True as stale until you see the
+  condition move: watch it leave its pre-update value (ACK passes through Unknown while
+  reconciling), or check that its lastTransitionTime postdates your change. Second, a
+  Terminal condition halts reconciliation while Synced keeps its last value — a lever is
+  proven only when ACK.ResourceSynced is True AND ACK.Terminal is absent or not True,
+  read in the same breath. Levers the endpoint cannot support are
+  findings, not failures: isolate them (bisect the spec), capture the error as
+  evidence, and classify. Expect the exercise to surface real service semantics —
+  ownership versus grants, implicit versioning, destination validation — and fold
+  each one into the samples so consumers inherit the lesson.
 
 ## How to report a render
 
@@ -274,7 +292,15 @@ need an upstream controller release (the "not in CRD" rows).
 
 The table and the decisions behind it also live in the module, not only in chat: write
 them to the module's `README.md`, or to a docs file such as `docs/coverage.md` that the
-README links to. Each gap row carries its why — who chose to leave a parameter out and
+README links to. That doc also carries a **runtime verification** section recording each
+lever's outcome as exactly one of: *verified end to end* (exercised and read back),
+*applied but the endpoint cannot echo or support it* (name the limitation with the error
+as evidence), or *untested* with the reason. "Every parameter exposed" and "every lever
+working" are different claims; the doc must show which one each row has earned, and the
+split appears in the delivery message too: the coverage summary's closing sentence
+states the counts per state — verified end to end, endpoint-limited, untested — and
+names the docs file holding the per-lever record, so a delivery can never read as
+"every lever working" when it is not. Each gap row carries its why — who chose to leave a parameter out and
 when, which controller a "not installed" row waits on, which upstream release a "not in
 CRD" row needs — so a developer reading the module a month later learns why a parameter
 or API configuration is not available without excavating the conversation.

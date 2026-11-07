@@ -227,7 +227,7 @@ while IFS= read -r LINE; do
         echo "  The command is cited but not what it produced. Add the outcome —"
         echo "  'exit: 0', a count, or the line the command printed."
       else
-        echo "  Every 'verified'/'fixed'/'works' claim must cite the exact command and paste its output."
+        echo "  Every 'verified'/'fixed'/'works'/'tested'/'validated' claim must cite the exact command and paste its output."
       fi
       echo "  Or write 'written but NOT verified' if you did not execute the check."
       ERRORS=$((ERRORS + 1))

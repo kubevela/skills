@@ -215,7 +215,7 @@ apply fails.
   configuration — are bootstrap, not component output, and never belong in Go code:
   `defkit.Register` only registers the definition with the generation tooling and runs
   during `go test` and codegen on machines that must not touch a cluster. Ship them in
-  the module's `module.yaml` lifecycle hooks (`hooks.preApply`, executed by
+  the module's `module.yaml` lifecycle hooks (`hooks.pre-apply`, executed by
   `vela def apply-module`, which can apply manifests and wait for readiness) when the
   module should be self-contained, or in the platform's addon or GitOps layer when the
   object is shared. Never emit a shared singleton from a component template: two

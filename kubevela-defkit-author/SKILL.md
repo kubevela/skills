@@ -63,8 +63,10 @@ version, trust column 1 and say so in the pull request.
      of at the controller. A limit stated only in a description is not a limit.
    - **Dependencies in the schema, not descriptions.** Parameters that only exist in
      one mode live in a `ConditionalParams` block keyed on the discriminator
-     (`WhenParam(mode.Eq("X")).Params(...)`), so the generated schema shows them only
-     when the mode selects them. Settings that only make sense together share one
+     (`WhenParam(mode.Eq("X")).Params(...)` — see the parameters section of
+     `references/api-map.md`, and confirm against `go doc` for the pinned version as
+     with any builder), so the generated schema shows them only when the mode selects
+     them. Settings that only make sense together share one
      `Struct` or `Object`; mutually exclusive shapes use `OneOf` with `Variant`s.
      "only with billingMode PROVISIONED" in a usage string is the smell to replace.
    - **Define a shape once.** A structure used by more than one parameter — an index
@@ -74,7 +76,8 @@ version, trust column 1 and say so in the pull request.
      applies below that: one variable, not two transcriptions.
    - **Defaults mirror the provider.** Where the service documents a default, state it
      with `.Default(...)` so `vela show` tells the truth; where the platform wants a
-     safer opinion than the provider's, say so in the usage string and the coverage doc.
+     safer opinion than the provider's, say so in the usage string — and for a
+     cloud-service definition, record the choice in its coverage doc.
 5. **Test in Go.** Write the tests with ginkgo and gomega — `Describe`/`It` specs using
    the matchers in defkit's `testing/matchers` package, the way vela-go-definitions does;
    table-driven entries live inside the specs. Cover defaults, parameter boundaries,

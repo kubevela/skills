@@ -1,0 +1,246 @@
+#!/bin/bash
+set -euo pipefail
+
+# scripts/commit-message-lint.sh
+# Computational enforcement of commit message conventions, adapted from
+# anoop2811/software-factory-template (scripts/hooks/commit-message-lint.sh).
+#
+# Two concerns:
+#   1. Conventional commits + length discipline
+#      - subject: <type>(<scope>)?: <description>
+#        types: feat|fix|chore|docs|refactor|test|ci|build|perf
+#      - subject: no trailing period
+#      - body: max 6 bullets, each bullet <= 25 words
+#   2. Verification claims carry their evidence
+#      - no "verified"/"fixed"/"works"/"tested"/"validated" claim without
+#        command + output citation
+#      - "written but NOT verified" is always acceptable
+#
+# Usage:
+#   ./scripts/commit-message-lint.sh <sha>   # check one commit
+#   ./scripts/commit-message-lint.sh         # read one message from stdin
+#   CI: for sha in $(git rev-list BASE..HEAD); do
+#         ./scripts/commit-message-lint.sh "$sha"
+#       done
+#
+# Merge and revert commits are exempt from the conventional-commits subject check.
+# Bracket expressions ([[:space:]]) and [(] [)] are used instead of backslash
+# escapes so the patterns are portable across GNU and BSD ERE (CI on Linux,
+# local dev on macOS).
+
+# Read the commit message
+if [ -n "${1:-}" ]; then
+  MESSAGE=$(git log --format=%B -1 "$1")
+else
+  if [ -t 0 ]; then
+    echo "commit-message-lint: no sha argument and stdin is a terminal — pass a sha or pipe a message" >&2
+    exit 2
+  fi
+  MESSAGE=$(cat)
+fi
+
+ERRORS=0
+
+# Portable regex patterns (ERE via bash [[ =~ ]]).
+CC_RE='^(feat|fix|chore|docs|refactor|test|ci|build|perf)([(][^)]+[)])?: .+'
+# A command citation, and separately the observation it produced. Both are needed:
+# see the evidence window below.
+EVIDENCE_CMD_RE='(`[^`]+`|go test|go vet|golangci-lint|gosec |grep |rg |find |ls |git |cat |sed |make |curl |xh |vela |kubectl |python3 |bash )'
+# What the command produced, in two grades.
+#
+# A strong marker states a result outright — `exit: 0`, `ok`, `--- PASS`, an
+# arrow, `output:` — and counts wherever it appears.
+#
+# A bare number is weaker. "3 issues" inside the sentence making the claim is
+# prose about a number, not output someone read back; the same count on a line
+# beneath the command is. So a numeric count only counts away from the claim line
+# — the difference between "works for 3 issues after running `go test`" and a
+# cited command with its result underneath. Result words (`ok`, `clean`, `PASS`,
+# `no findings`) are statements of what happened and count anywhere.
+EVIDENCE_OUTCOME_STRONG_RE='(exit:|exit status|→|output:|--- (PASS|FAIL)|no (diff|diffs|change|changes|output|findings|issues|problems|violations|test files)|(^|[^[:alnum:]_])(ok|OK|PASS|FAIL|passed|failed|clean|green|unchanged)([^[:alnum:]_]|$))'
+EVIDENCE_OUTCOME_COUNT_RE='[0-9]+ (passed|failed|ok|error|errors|warning|warnings|violation|violations|issue|issues|problem|problems|finding|findings|assertion|assertions|spec|specs|example|examples|subtest|subtests|check|checks|test|tests|file|files|byte|bytes|line|lines|commit|commits)'
+PERIOD_RE='[.]$'
+BULLET_RE='^[[:space:]]*[-*][[:space:]]+(.+)'
+BLANK_RE='^[[:space:]]*$'
+MERGE_RE='^Merge '
+REVERT_RE='^Revert '
+
+# ── 1. Subject line: conventional commits ──────────────────────────────
+# First non-blank line is the subject.
+SUBJECT=""
+while IFS= read -r LINE; do
+  if [[ ! "$LINE" =~ $BLANK_RE ]]; then
+    SUBJECT="$LINE"
+    break
+  fi
+done <<< "$MESSAGE"
+
+# Exempt merge / revert commits from the type check.
+if [[ ! "$SUBJECT" =~ $MERGE_RE && ! "$SUBJECT" =~ $REVERT_RE ]]; then
+  if [[ ! "$SUBJECT" =~ $CC_RE ]]; then
+    echo "COMMIT-LINT FAIL: subject line does not follow conventional commits:"
+    echo "  $SUBJECT"
+    echo "  Expected: <type>(<scope>)?: <description>"
+    echo "  Types: feat|fix|chore|docs|refactor|test|ci|build|perf"
+    ERRORS=$((ERRORS + 1))
+  fi
+  # Subject must not end with a period.
+  if [[ "$SUBJECT" =~ $PERIOD_RE ]]; then
+    echo "COMMIT-LINT FAIL: subject line ends with a period:"
+    echo "  $SUBJECT"
+    ERRORS=$((ERRORS + 1))
+  fi
+fi
+
+# ── 2. Bullet count (max 6) and per-bullet word count (max 25) ─────────
+# A bullet is a line matching ^[[:space:]]*[-*][[:space:]]+.+
+# Wrapped continuation lines (non-blank, non-bullet, within the same
+# paragraph as a bullet) are accumulated into the current bullet's word
+# count. A blank line finalizes the current bullet. Known limitation:
+# continuation lines are joined with a space, so leading indentation of
+# wrapped lines does not affect the word count.
+BULLET_COUNT=0
+CURRENT_BULLET_TEXT=""
+IN_BULLET=false
+
+finalize_bullet() {
+  if [ "$IN_BULLET" = true ]; then
+    WORD_COUNT=$(printf '%s' "$CURRENT_BULLET_TEXT" | wc -w | tr -d ' ')
+    if [ "$WORD_COUNT" -gt 25 ]; then
+      echo "COMMIT-LINT FAIL: bullet #$BULLET_COUNT exceeds 25 words ($WORD_COUNT words):"
+      echo "  $CURRENT_BULLET_TEXT"
+      ERRORS=$((ERRORS + 1))
+    fi
+    IN_BULLET=false
+    CURRENT_BULLET_TEXT=""
+  fi
+}
+
+while IFS= read -r LINE; do
+  if [[ "$LINE" =~ $BULLET_RE ]]; then
+    finalize_bullet
+    BULLET_COUNT=$((BULLET_COUNT + 1))
+    CURRENT_BULLET_TEXT="${BASH_REMATCH[1]}"
+    IN_BULLET=true
+  elif [[ ! "$LINE" =~ $BLANK_RE ]]; then
+    # Non-blank continuation line: accumulate if we're inside a bullet.
+    if [ "$IN_BULLET" = true ]; then
+      CURRENT_BULLET_TEXT="$CURRENT_BULLET_TEXT $LINE"
+    fi
+  else
+    finalize_bullet
+  fi
+done <<< "$MESSAGE"
+finalize_bullet
+
+if [ "$BULLET_COUNT" -gt 6 ]; then
+  echo "COMMIT-LINT FAIL: body has $BULLET_COUNT bullets, max is 6"
+  echo "  Conventional commit bodies: short intro + max 5-6 points."
+  ERRORS=$((ERRORS + 1))
+fi
+
+# ── 3. Verification claims: no bare "verified"/"fixed"/"works" ──────────
+PREV_LINE=""
+LINE_NO=0
+TOTAL_LINES="$(printf '%s\n' "$MESSAGE" | wc -l | tr -d '[:space:]')"
+while IFS= read -r LINE; do
+  LINE_NO=$((LINE_NO + 1))
+  # Everything after the current line, so a header can be judged by what follows
+  # it rather than assumed innocent.
+  REST_LINES="$(printf '%s\n' "$MESSAGE" | sed -n "$((LINE_NO + 1)),${TOTAL_LINES}p")"
+  CLAIMS_VERIFICATION=false
+  # Word-bounded so "frameworks" isn't read as a "works" claim, "prefixed" as
+  # "fixed", etc. BSD grep lacks \b, so match on non-word neighbours / bounds.
+  if echo "$LINE" | grep -qiE '(^|[^[:alnum:]_])(verified|fixed|works|tested|validated)([^[:alnum:]_]|$)'; then
+    # "NOT verified" exempts the unverified statement — not every other claim that
+    # happens to share the line. Strip the hedged phrases, then see whether a
+    # claim remains. Lowercase first: GNU sed's /I flag is not available on BSD
+    # sed, so fold the case instead of relying on it.
+    RESIDUAL="$(printf '%s' "$LINE" | tr '[:upper:]' '[:lower:]' \
+      | sed -E 's/not[[:space:]]+(verified|tested|validated)//g; s/un(verified|tested|validated)//g; s/not_(verified|tested|validated)//g')"
+    if ! echo "$RESIDUAL" | grep -qE '(^|[^[:alnum:]_])(verified|fixed|works|tested|validated)([^[:alnum:]_]|$)'; then
+      PREV_LINE="$LINE"
+      continue
+    fi
+    # A bare "Verified:" header is only acceptable when the contiguous block
+    # beneath it actually carries the evidence.
+    if echo "$LINE" | grep -qE '^[[:space:]]*(Verified|Fixed|Works|Tested|Validated):[[:space:]]*$'; then
+      EVIDENCE_BLOCK="$(printf '%s\n' "$REST_LINES" | sed -n '/^[[:space:]]*$/q;p')"
+      # The outcome must live outside inline code: strip backtick spans so a path
+      # like `go test ./ok` cannot satisfy the output half of the contract.
+      EVIDENCE_BLOCK_STRIPPED="$(printf '%s\n' "$EVIDENCE_BLOCK" | sed -E 's/`[^`]*`//g')"
+      if printf '%s\n' "$EVIDENCE_BLOCK" | grep -qE "$EVIDENCE_CMD_RE" \
+         && { printf '%s\n' "$EVIDENCE_BLOCK_STRIPPED" | grep -qE "$EVIDENCE_OUTCOME_STRONG_RE" \
+              || printf '%s\n' "$EVIDENCE_BLOCK_STRIPPED" | grep -qE "$EVIDENCE_OUTCOME_COUNT_RE"; }; then
+        PREV_LINE="$LINE"
+        continue
+      fi
+      echo "COMMIT-LINT FAIL: a bare '$LINE' header without command + output beneath it:"
+      echo "  Put the command and what it produced on the following lines, or write"
+      echo "  'written but NOT verified'."
+      ERRORS=$((ERRORS + 1))
+      PREV_LINE="$LINE"
+      continue
+    fi
+    CLAIMS_VERIFICATION=true
+  fi
+
+  if [ "$CLAIMS_VERIFICATION" = true ]; then
+    # Evidence is a command AND what it produced. The window is the claim's line,
+    # the line above it (a header), and the contiguous block beneath it, stopping
+    # at the next blank line or bullet so one verified item cannot lend its
+    # evidence to every unverified item under it.
+    EVIDENCE_TAIL="$(printf '%s\n' "$REST_LINES" |
+      awk '/^[[:space:]]*$/ { exit } /^[[:space:]]*[-*][[:space:]]+/ { exit } { print }')"
+    if echo "$LINE" | grep -qE '^[[:space:]]*[-*][[:space:]]+'; then
+      EVIDENCE_WINDOW="$(printf '%s\n%s\n' "$LINE" "$EVIDENCE_TAIL")"
+      EVIDENCE_ORDERED="$EVIDENCE_WINDOW"
+      EVIDENCE_CLAIM_LINE=1
+    else
+      EVIDENCE_WINDOW="$(printf '%s\n%s\n%s\n' "$PREV_LINE" "$LINE" "$EVIDENCE_TAIL")"
+      EVIDENCE_ORDERED="$EVIDENCE_WINDOW"
+      EVIDENCE_CLAIM_LINE=2
+    fi
+    HAS_COMMAND=false
+    HAS_OUTCOME=false
+    if echo "$EVIDENCE_WINDOW" | grep -qE "$EVIDENCE_CMD_RE"; then HAS_COMMAND=true; fi
+    # Outcomes must live outside inline code: strip backtick spans first so a
+    # cited path like `go test ./ok` cannot pass as the output it never printed.
+    EVIDENCE_WINDOW_STRIPPED="$(printf '%s\n' "$EVIDENCE_WINDOW" | sed -E 's/`[^`]*`//g')"
+    if echo "$EVIDENCE_WINDOW_STRIPPED" | grep -qE "$EVIDENCE_OUTCOME_STRONG_RE"; then
+      HAS_OUTCOME=true
+    elif printf '%s\n' "$EVIDENCE_ORDERED" |
+         awk -v cmd="$EVIDENCE_CMD_RE" -v cnt="$EVIDENCE_OUTCOME_COUNT_RE" \
+             -v claim="$EVIDENCE_CLAIM_LINE" '
+           # A count is output only if it comes after the command that produced it.
+           NR == claim { if ($0 ~ cmd) seen = 1; next }
+           seen && $0 ~ cnt { found = 1; exit }
+           $0 ~ cmd { seen = 1 }
+           END { exit(found ? 0 : 1) }'; then
+      HAS_OUTCOME=true
+    fi
+
+    if [ "$HAS_COMMAND" = false ] || [ "$HAS_OUTCOME" = false ]; then
+      echo "COMMIT-LINT FAIL: line claims verification but lacks command + output citation:"
+      echo "  $LINE"
+      if [ "$HAS_COMMAND" = true ] && [ "$HAS_OUTCOME" = false ]; then
+        echo "  The command is cited but not what it produced. Add the outcome —"
+        echo "  'exit: 0', a count, or the line the command printed."
+      else
+        echo "  Every 'verified'/'fixed'/'works'/'tested'/'validated' claim must cite the exact command and paste its output."
+      fi
+      echo "  Or write 'written but NOT verified' if you did not execute the check."
+      ERRORS=$((ERRORS + 1))
+    fi
+  fi
+
+  PREV_LINE="$LINE"
+done <<< "$MESSAGE"
+
+# ── Result ─────────────────────────────────────────────────────────────
+if [ "$ERRORS" -gt 0 ]; then
+  echo "commit-message-lint: $ERRORS violation(s) found"
+  exit 1
+fi
+
+echo "commit-message-lint: OK (conventional commits, <=6 bullets <=25 words, verification claims cited)"

@@ -24,8 +24,9 @@ memory. If a name below does not exist in your version, trust `go doc`.
 Constructors: `String`, `Int`, `Bool`, `Float`, `Enum`, `Array`, `StringList`, `IntList`,
 `List`, `Map`, `Object`, `StringKeyMap`, `DynamicMap`, `Struct`, `Field(name, ParamType)`,
 `OneOf` with `Variant`, `ClosedUnion` with `ClosedStruct`, and `ConditionalParams`, whose
-branches are built with `WhenParam(cond).Params(...)` and attached to the definition via
-`.ConditionalParams(block)`.
+branches are built with `WhenParam(cond).Params(...)` and attached via
+`.ConditionalParams(block)` — a `ComponentDefinition` method only; the other definition
+kinds do not expose it in this version.
 
 Common modifiers on each: `.Required()`, `.Optional()`, `.Default(v)`, `.Description(s)`,
 `.Short(s)`, `.Ignore()`. Type-specific constraints: `String` has `.Values(...)`,

@@ -57,6 +57,17 @@ laid out per option (what exists, at what maturity, what the test endpoint
 supports), and a recommendation. Picking silently because one option is easier to
 verify is choosing the user's architecture for them.
 
+The same rule applies below the level of architecture, to values. A value that is
+not inferable from the request, the provider's documentation, the CRD, or a
+recorded platform convention is asked for, not invented: a default the provider
+does not document, a name or identifier that will outlive the task, a credential
+or endpoint source, a capacity or retention number with cost implications. Two
+kinds of value are exempt. Test fixtures that exist only to exercise a lever and
+are torn down may be fabricated — and must look fabricated, never like real data.
+And sample Applications may carry illustrative values, since samples document
+shape, not the user's environment. Everything else that persists in the
+deliverable carries either a named source or the user's answer.
+
 ## Sequence
 
 1. **Search the catalog first.** Call `list_definitions` and `describe_definition` on

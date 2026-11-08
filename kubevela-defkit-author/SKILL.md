@@ -39,6 +39,35 @@ The bundled references carry a `Source:` line with the kubevela version and the
 vela-go-definitions commit they were taken from. If your module pins a different minor
 version, trust column 1 and say so in the pull request.
 
+## Outcome-altering forks stop at the user
+
+Discovery sometimes surfaces options that change *what gets built*, not just how:
+one service name covering several products (EMR on EC2, on EKS, or Serverless), a
+resource servable only through kinds with different runtime semantics, a request
+that two incompatible schemas could satisfy. Some choices are already decided and
+are not forks — but each rule decides exactly the choice it names and nothing more:
+the "Cloud services" rules below pick the provisioner family (ACK for AWS, Config
+Connector for GCP), the full-parity policy picks which fields are exposed, and a
+default recorded on the platform — a definition `list_definitions` marks `default`,
+or a namespace's declared delivery practice — picks among existing definitions.
+None of those picks which product a service name means or which resource kind's
+runtime semantics the user wants. Every outcome-altering fork that no such rule or
+recorded default decides stops at the user: one question, the discovered facts
+laid out per option (what exists, at what maturity, what the test endpoint
+supports), and a recommendation. Picking silently because one option is easier to
+verify is choosing the user's architecture for them.
+
+The same rule applies below the level of architecture, to values. A value that is
+not inferable from the request, the provider's documentation, the CRD, or a
+recorded platform convention is asked for, not invented: a default the provider
+does not document, a name or identifier that will outlive the task, a credential
+or endpoint source, a capacity or retention number with cost implications. Two
+kinds of value are exempt. Test fixtures that exist only to exercise a lever and
+are torn down may be fabricated — and must look fabricated, never like real data.
+And sample Applications may carry illustrative values, since samples document
+shape, not the user's environment. Everything else that persists in the
+deliverable carries either a named source or the user's answer.
+
 ## Sequence
 
 1. **Search the catalog first.** Call `list_definitions` and `describe_definition` on
@@ -52,8 +81,10 @@ version, trust column 1 and say so in the pull request.
 3. **For a cloud service, get the real shape first.** Follow "Cloud services" below before
    writing a parameter.
 4. **Write the definition in Go.** Use defkit's parameter builders for every parameter.
-   Mark required parameters as required, give defaults where the platform has an opinion,
-   and attach usage strings; they become the schema developers see. Keep resource
+   Mark required parameters as required, give defaults where the provider documents one
+   or a recorded platform convention supplies one — a platform opinion nobody recorded
+   is a value to ask for, per "Outcome-altering forks stop at the user" — and attach
+   usage strings; they become the schema developers see. Keep resource
    construction schema-agnostic as defkit intends; do not import Kubernetes API types to
    build output objects. Set `definition.oam.dev/provides` to the capability it serves.
    The schema is the contract, so make it carry everything the provider documents:

@@ -44,13 +44,18 @@ version, trust column 1 and say so in the pull request.
 Discovery sometimes surfaces options that change *what gets built*, not just how:
 one service name covering several products (EMR on EC2, on EKS, or Serverless), a
 resource servable only through kinds with different runtime semantics, a request
-that two incompatible schemas could satisfy. Where a recorded platform default or
-an explicit rule in this skill already decides — ACK for AWS, Config Connector for
-GCP, full CRD parity — follow it without asking. Everywhere else, when the options
-alter the outcome and there is doubt, stop and ask the user: one question, the
-discovered facts laid out per option (what exists, at what maturity, what the test
-endpoint supports), and a recommendation. Picking silently because one option is
-easier to verify is choosing the user's architecture for them.
+that two incompatible schemas could satisfy. Some choices are already decided and
+are not forks — but each rule decides exactly the choice it names and nothing more:
+the "Cloud services" rules below pick the provisioner family (ACK for AWS, Config
+Connector for GCP), the full-parity policy picks which fields are exposed, and a
+default recorded on the platform — a definition `list_definitions` marks `default`,
+or a namespace's declared delivery practice — picks among existing definitions.
+None of those picks which product a service name means or which resource kind's
+runtime semantics the user wants. Every outcome-altering fork that no such rule or
+recorded default decides stops at the user: one question, the discovered facts
+laid out per option (what exists, at what maturity, what the test endpoint
+supports), and a recommendation. Picking silently because one option is easier to
+verify is choosing the user's architecture for them.
 
 ## Sequence
 

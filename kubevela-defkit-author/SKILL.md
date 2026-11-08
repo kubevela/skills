@@ -81,8 +81,10 @@ deliverable carries either a named source or the user's answer.
 3. **For a cloud service, get the real shape first.** Follow "Cloud services" below before
    writing a parameter.
 4. **Write the definition in Go.** Use defkit's parameter builders for every parameter.
-   Mark required parameters as required, give defaults where the platform has an opinion,
-   and attach usage strings; they become the schema developers see. Keep resource
+   Mark required parameters as required, give defaults where the provider documents one
+   or a recorded platform convention supplies one — a platform opinion nobody recorded
+   is a value to ask for, per "Outcome-altering forks stop at the user" — and attach
+   usage strings; they become the schema developers see. Keep resource
    construction schema-agnostic as defkit intends; do not import Kubernetes API types to
    build output objects. Set `definition.oam.dev/provides` to the capability it serves.
    The schema is the contract, so make it carry everything the provider documents:

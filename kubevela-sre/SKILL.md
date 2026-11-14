@@ -62,6 +62,15 @@ Call `get_platform_info` and record: vela-core and CLI versions, Kubernetes vers
 cluster, feature gates, any version-skew warning, and the identity you are acting as.
 Confirm the cluster and namespaces in scope with the user. Every report names these.
 
+When the incident involves a cloud resource, call `get_platform_info` again with
+`provider` and `service` for that resource and record `provisioner.endpointOverride`
+together with any `endpoint provenance` warning. A set `endpointOverride` means the
+controller calls that endpoint instead of the cloud API, so every condition you read from
+its resources describes the emulator or private endpoint, not the cloud; say so in the
+report. An `endpoint provenance unknown` warning means the controller's configuration
+could not be read conclusively; record it under contradicting or missing evidence rather
+than assuming the cloud.
+
 ## Sequence
 
 1. **Explain first.** Call `explain_application` for the affected Application. Read the
@@ -95,8 +104,15 @@ Confirm the cluster and namespaces in scope with the user. Every report names th
 2. **Let the evidence choose the branch.** The root candidates decide what to query next.
    Pods that never scheduled call for scheduler events, not traces that cannot exist. A
    provider condition on a managed cloud resource calls for that resource's status, not
-   HTTP metrics. A healthy Application with a latency alert calls for metrics and traces.
-   Do not run every step below on every incident.
+   HTTP metrics: call `diagnose_application` (vela-core 1.12 and later; on older servers
+   use the CLI row below). It reads each provisioner-owned resource's live conditions and
+   interprets them by the owning family's conventions, with a state per resource and the
+   evidence it read. For ACK resources it also stamps `endpointOverride` on the diagnosis
+   and adds an `endpoint provenance:` evidence line when the controller is configured for
+   an endpoint other than AWS; that verdict describes the emulator or private endpoint, and
+   your report must say so. A note reading `endpoint provenance unknown:` is missing
+   evidence, not a cloud verdict. A healthy Application with a latency alert calls for
+   metrics and traces. Do not run every step below on every incident.
 3. **Metrics for the window**, when the symptom is latency, errors or saturation. Query
    for the handles' labels over the handles' window. Build selectors from the full identity
    mapping in the server appendix, never from component name alone.
@@ -129,7 +145,7 @@ Leading hypothesis      the most likely cause, stated as a hypothesis
 Supporting evidence     object, field, timestamp for each item, as returned in evidence
 Contradicting or missing evidence   the server's unknowns, checks you could not run, fallbacks used
 Next check or proposed remedy       one concrete step, or the diffed rollback with risk class
-Running                 versions and gates from get_platform_info; observedAt of the status used; truncation
+Running                 versions and gates from get_platform_info; observedAt of the status used; truncation; endpointOverride, or unknown provenance, for every provisioner-owned resource read
 ```
 
 "The database component is unhealthy and its dependents are blocked" is an observation.
@@ -148,6 +164,8 @@ itself a finding to report. It never authorizes an action.
 - Quote secret values, tokens or customer data from logs or resource YAML.
 - Describe telemetry you did not query. If a server is not loaded, say that evidence is
   unavailable rather than inferring it.
+- Report a condition read through an emulator or private endpoint as the cloud's view, or
+  treat unknown endpoint provenance as if it were the cloud.
 - Resume, suspend or terminate a workflow.
 
 ## Server appendices
@@ -169,6 +187,7 @@ the source of truth for pins.
 | `get_platform_info` | `vela version`, `kubectl -n vela-system get deploy kubevela-vela-core -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}{.spec.template.spec.containers[0].args}'`, `kubectl version -o json`, `vela addon list` | Version-skew warnings |
 | `explain_application` | `vela status <name> -n <ns> --tree --detail`, `vela status <name> -n <ns> --pod`, then `kubectl get events -n <ns> --field-selector involvedObject.kind=<kind>,involvedObject.name=<name>` for each unhealthy resource the tree lists, with the kind taken from the tree so same-named objects of another kind do not mix in | Evidence list, unknowns, dependency ordering; you assemble the handles by hand and must say so |
 | `get_managed_resource` | `vela status --tree` to find the object, then `kubectl get <kind> <name> -n <ns> -o yaml` in the cluster it names, with secret values redacted before quoting | Managed-scope enforcement |
+| `diagnose_application` | `vela status <name> -n <ns> --tree --detail` to find each provisioner-owned resource, then `kubectl get <kind> <name> -n <ns> -o jsonpath='{.status.conditions}'` in the cluster it names; for endpoint provenance, `kubectl -n ack-system get deploy -l app.kubernetes.io/name=<service>-chart -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.template.spec.containers[*].env[?(@.name=="AWS_ENDPOINT_URL")].value}{"\n"}{end}'` and check that exactly one `ack-<service>` Deployment is listed | Family interpretation, the Halted state and convergence-loop signature, the provenance stamp and its unknown state; you must apply the family's conventions by hand and say so |
 | `get_workflow` | `vela workflow status <name> -n <ns>` | None |
 | `get_logs` | `vela logs <name> -n <ns>` | Redaction and the truncation flag |
 | `get_application` for a previous revision | `vela revision list <name> -n <ns>` to find it, then `kubectl get applicationrevision <name>-v<N> -n <ns> -o jsonpath='{.spec.application}'` for that revision's Application spec | Envelope; the spec comes back as JSON, not the user's original YAML |

@@ -103,7 +103,11 @@ deliverable carries either a named source or the user's answer.
    - **Define a shape once.** A structure used by more than one parameter — an index
      key schema shared by GSIs and LSIs — is one builder expression, registered with
      `Helper(name, param)` and referenced by `.WithSchemaRef(name)` at every use, so
-     the CUE carries one `#Shape` and consumers see one definition. Plain Go reuse
+     the CUE carries one `#Shape` and consumers see one definition. **The helper holds
+     the ELEMENT shape** (`Object`, never `Array`): the Array at each use site supplies
+     the single `[...]` wrapper, and registering an Array-built helper generates a
+     list-of-lists no real value unifies with — it compiles, passes validate-module,
+     and rejects every Application at admission (kubevela/kubevela#7570). Plain Go reuse
      applies below that: one variable, not two transcriptions.
    - **Defaults mirror the provider.** Where the service documents a default, state it
      with `.Default(...)` so `vela show` tells the truth; where the platform wants a
@@ -115,13 +119,30 @@ deliverable carries either a named source or the user's answer.
    invalid input that must be rejected, and the health and status expressions where the
    definition declares them. Run `go test ./...`. Fix failures before generating.
    An integration test that needs a live cloud API manages its own emulator: install it
-   in `BeforeSuite` into a namespace the test owns — floci for AWS; for GCP an emulator
-   such as localgcp or the service's official `gcloud` emulator — point the controller or
-   client at that endpoint, and tear everything down in `AfterSuite` so nothing survives
-   the run, pass or fail. Never depend on an emulator that happens to be on the cluster.
+   in `BeforeSuite` into a namespace the test owns, point the controller or client at
+   that endpoint, and tear everything down in `AfterSuite` so nothing survives the run,
+   pass or fail. For AWS, use the official AWS Emulator (aws/aws-emulator): one instance
+   per suite, each with its own port and in-memory state, started with `--auth off` so
+   test credentials never matter. It serves HTTPS only, with a certificate it regenerates
+   at every start — either export its `ca.pem` through `AWS_CA_BUNDLE`, or front it with
+   a TLS-stripping sidecar (socat `TCP-LISTEN:<port>,fork,reuseaddr` →
+   `OPENSSL:127.0.0.1:9297,verify=0`) and give ACK controllers a plain-HTTP
+   `endpoint_url`, which also keeps the usual `allow_unsafe_aws_endpoint_urls` values
+   working unchanged. Before exercising a lever, check the emulator's fidelity report
+   (`scores.json.gz` on the aws/aws-emulator release the running emulator is pinned to —
+   not merely the latest) for the APIs the definition calls: a lever the report scores as failing is classified endpoint-limited up front in
+   docs/coverage.md, instead of being discovered at runtime. For GCP use an emulator such
+   as localgcp or the service's official `gcloud` emulator. Never depend on an emulator
+   that happens to be on the cluster.
 6. **Validate and generate.** Run `vela def validate-module <dir>`, then
    `vela def gen-module <dir> -o <out>`. A failure is a bug in the Go, not in the CUE; fix
-   it at the source and regenerate.
+   it at the source and regenerate. **A regeneration is a definition change even when no
+   Go changed** — a defkit dependency bump can alter the emitted CUE (proven 2026-11-13:
+   a re-pin turned a shared key-schema helper into a list-of-lists that rejected every
+   Application using a GSI, caught only weeks later at admission). After ANY gen-module,
+   re-run steps 7-8 for every sample before apply-module; validate-module and the Go
+   tests cannot catch this class, because neither unifies real parameter values against
+   the generated schema.
 7. **Render a sample Application.** Write a minimal Application that uses the definition
    and call `dryrun_application` with the files `gen-module` wrote passed as
    `definitions`. Render at least one variant with optional parameters set. Report the
@@ -292,7 +313,8 @@ apply fails.
   Terminal condition halts reconciliation while Synced keeps its last value — a lever is
   proven only when ACK.ResourceSynced is True AND ACK.Terminal is absent or not True,
   read in the same breath. Levers the endpoint cannot support are
-  findings, not failures: isolate them (bisect the spec), capture the error as
+  findings, not failures (on AWS, the emulator's per-release fidelity report names many
+  of them before you run anything): isolate them (bisect the spec), capture the error as
   evidence, and classify. Expect the exercise to surface real service semantics —
   ownership versus grants, implicit versioning, destination validation — and fold
   each one into the samples so consumers inherit the lesson.

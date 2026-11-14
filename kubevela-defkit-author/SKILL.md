@@ -103,7 +103,11 @@ deliverable carries either a named source or the user's answer.
    - **Define a shape once.** A structure used by more than one parameter — an index
      key schema shared by GSIs and LSIs — is one builder expression, registered with
      `Helper(name, param)` and referenced by `.WithSchemaRef(name)` at every use, so
-     the CUE carries one `#Shape` and consumers see one definition. Plain Go reuse
+     the CUE carries one `#Shape` and consumers see one definition. **The helper holds
+     the ELEMENT shape** (`Object`, never `Array`): the Array at each use site supplies
+     the single `[...]` wrapper, and registering an Array-built helper generates a
+     list-of-lists no real value unifies with — it compiles, passes validate-module,
+     and rejects every Application at admission (kubevela/kubevela#7570). Plain Go reuse
      applies below that: one variable, not two transcriptions.
    - **Defaults mirror the provider.** Where the service documents a default, state it
      with `.Default(...)` so `vela show` tells the truth; where the platform wants a

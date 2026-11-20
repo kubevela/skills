@@ -118,7 +118,16 @@ fixtures that test this.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Run the validator and both test suites before
-opening a pull request; CI runs the same.
+opening a pull request; CI runs the same. Commit subjects are lowercase conventional
+commits such as `feat(kubevela-sre): ...`, signed off with `-s`.
+
+## Community
+
+This repository is part of the KubeVela project and follows the
+[CNCF Code of Conduct](CODE_OF_CONDUCT.md). Report security issues privately as described
+in [SECURITY.md](SECURITY.md), never in a public issue. Slack, community meetings and how
+to get involved are covered in the project's
+[COMMUNITY.md](https://github.com/kubevela/kubevela/blob/master/COMMUNITY.md).
 
 ## License
 

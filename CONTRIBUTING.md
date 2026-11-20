@@ -53,6 +53,8 @@ kubevela/kubevela, and anything that embeds credentials or cluster-specific valu
    python3 scripts/validate_skills.py
    bash tests/validator/test.sh
    bash tests/consumers/test.sh
+   bash tests/coverage/test.sh
+   bash tests/fidelity/test.sh
    ```
 
    CI runs the same.

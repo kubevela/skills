@@ -1,0 +1,137 @@
+name: reference-module
+
+# Runs the worked module of the defkit-author skill the way the skill tells an agent to:
+# unit tests and the coverage record check without a cluster, then the emulator suite on a
+# kind cluster with KubeVela, the AWS Emulator and an ACK controller pointed at it.
+# A failure here means the skill's instructions, the emulator image, the ACK chart or
+# KubeVela no longer agree with each other.
+on:
+  pull_request:
+    paths:
+      - "kubevela-defkit-author/assets/**"
+      - "kubevela-defkit-author/scripts/**"
+      - "kubevela-defkit-author/SKILL.md"
+      - "kubevela-defkit-author/references/**"
+      - ".github/workflows/reference-module.yml"
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: reference-module-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MODULE: kubevela-defkit-author/assets/aws-dynamodb
+  # Released versions the suite runs against. The emulator version is pinned in the
+  # suite itself, next to the results it recorded.
+  VELA_VERSION: 1.12.0-alpha.1
+  ACK_DYNAMODB_CHART_VERSION: 1.16.0
+  EMULATOR_ENDPOINT: http://aws-emulator.aws-emulator.svc.cluster.local:4566
+
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: ${{ env.MODULE }}/go.mod
+          cache-dependency-path: ${{ env.MODULE }}/go.sum
+
+      - name: Check formatting
+        working-directory: ${{ env.MODULE }}
+        run: test -z "$(gofmt -l .)"
+
+      - name: Vet, with and without the emulator suite
+        working-directory: ${{ env.MODULE }}
+        run: |
+          go vet ./...
+          go vet -tags emulator ./test/emulator/...
+
+      - name: Unit tests
+        working-directory: ${{ env.MODULE }}
+        run: go test ./...
+
+      - name: Coverage record
+        run: |
+          python3 kubevela-defkit-author/scripts/check-coverage.py \
+            "$MODULE/docs/coverage.md" --cue "$MODULE/cue-generated/components/dynamodb-table.cue"
+
+  emulator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: ${{ env.MODULE }}/go.mod
+          cache-dependency-path: ${{ env.MODULE }}/go.sum
+
+      - name: Create a kind cluster
+        run: |
+          kind create cluster --wait 120s
+          kubectl config current-context
+
+      - name: Install KubeVela
+        run: |
+          helm install kubevela vela-core --repo https://kubevela.io/charts --version "$VELA_VERSION" \
+            -n vela-system --create-namespace --wait --timeout 10m
+
+      - name: Install the vela CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "v$VELA_VERSION" -R kubevela/kubevela \
+            --pattern "vela-v$VELA_VERSION-linux-amd64.tar.gz" --dir "$RUNNER_TEMP"
+          tar -xzf "$RUNNER_TEMP/vela-v$VELA_VERSION-linux-amd64.tar.gz" -C "$RUNNER_TEMP"
+          echo "VELA_BIN=$RUNNER_TEMP/linux-amd64/vela" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/linux-amd64/vela" version
+
+      - name: Deploy the AWS Emulator
+        run: |
+          # The version the suite pins, so the two cannot drift apart.
+          version="$(sed -n 's/^const emulatorVersion = "\(.*\)"$/\1/p' "$MODULE/test/emulator/suite_test.go")"
+          test -n "$version"
+          kubectl apply -f "https://github.com/kubevela/cloud-emulators/releases/download/aws-emulator-v${version}/aws-emulator-${version}.yaml"
+          kubectl -n aws-emulator rollout status deployment/aws-emulator --timeout 5m
+
+      - name: Install the ACK DynamoDB controller pointed at the emulator
+        run: |
+          kubectl create namespace ack-system
+          kubectl -n ack-system create secret generic ack-emulator-credentials \
+            --from-literal=credentials=$'[default]\naws_access_key_id = emulator-not-a-real-key\naws_secret_access_key = emulator-not-a-real-secret\n'
+          helm install ack-dynamodb oci://public.ecr.aws/aws-controllers-k8s/dynamodb-chart \
+            --version "$ACK_DYNAMODB_CHART_VERSION" -n ack-system \
+            --set aws.region=us-west-2 \
+            --set aws.endpoint_url="$EMULATOR_ENDPOINT" \
+            --set aws.allow_unsafe_aws_endpoint_urls=true \
+            --set aws.credentials.secretName=ack-emulator-credentials
+          # The controller calls STS on the emulator when it starts.
+          kubectl -n ack-system rollout status deployment --timeout 5m
+
+      - name: Emulator suite
+        working-directory: ${{ env.MODULE }}
+        run: go test -tags emulator ./test/emulator/... -count=1 -timeout 50m -v
+
+      - name: Show what the cluster was doing, on failure
+        if: failure()
+        run: |
+          kubectl get pods -A
+          kubectl get applications.core.oam.dev -A || true
+          kubectl get tables.dynamodb.services.k8s.aws -A || true
+          kubectl -n ack-system logs deployment/ack-dynamodb-dynamodb-chart --tail 80 || true
+          kubectl -n aws-emulator logs deployment/aws-emulator --tail 40 || true

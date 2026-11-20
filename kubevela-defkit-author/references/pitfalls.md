@@ -34,3 +34,33 @@ Each of these has been seen in review or follows directly from how defkit works.
     version; the generated CUE targets the controller features of that version. Check
     `get_platform_info` or `vela version` against the pin before promising a feature such
     as definition versioning or placement constraints will work on the target cluster.
+11. **Bare YAML values that are not strings.** YAML reads an unquoted `N`, `Y`, `yes`,
+    `no`, `on` or `off` as a boolean, so `attributeType: N` reaches the definition as
+    `false` and is rejected with "mismatched types bool and string". Quote such values in
+    every sample, and say so in the parameter's usage string when an enum has one.
+12. **Installing a definition by another route than the CLI.** Install a module the way a platform team
+    does, with `vela def apply-module <dir>`, in tests too. A second apply of a changed
+    definition needs `--conflict=overwrite`.
+13. **Reading health right after an update.** A cloud controller is out of sync and back
+    within seconds, but KubeVela re-checks a component on its re-sync period, 5 minutes by
+    default. Until then the Application can show the health it had during the update.
+    Prove a change with the service's API, and give an Application-health assertion after
+    an update that much time.
+14. **A reason that is not one.** "Untested: not exercised yet" in the coverage record
+    means a spec is missing. Untested is for a lever something blocks, and the row names
+    the blocker. `scripts/check-coverage.py` rejects placeholders such as "not exercised
+    yet", "later" or "TODO"; whether another reason is a real blocker is for you and the
+    reviewer to judge.
+15. **A constraint the schema cannot express.** Some rules span parameters, such as every
+    key attribute being declared in `attributeDefinitions`. The service rejects the
+    request, the controller sets its terminal condition, and the component must then be
+    unhealthy. Test that path once per definition; a health policy that reads only the
+    synced condition reports such a resource as ready.
+16. **Rules on a shape registered with `Helper`.** A helper type carries the fields of
+    its shape but not its `Validators`. A shape with rules between its fields, such as a
+    projection whose `nonKeyAttributes` goes only with `INCLUDE`, is written into each
+    parameter that uses it (one Go function, called at each use) so the rules are
+    emitted. Check the generated CUE for the rule's message at every use.
+17. **Installing the controller before the emulator.** An ACK controller calls STS when
+    it starts. Pointed at an emulator that is not there yet, it restarts until one
+    answers. On a test cluster the emulator is deployed first.

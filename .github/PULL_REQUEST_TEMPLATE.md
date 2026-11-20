@@ -17,7 +17,7 @@ I have:
 - [ ] Read and followed [CONTRIBUTING.md](../CONTRIBUTING.md), including the rules for what belongs in a skill.
 - [ ] Written commit subjects as lowercase conventional commits, for example `feat(kubevela-sre): ...` or `fix: ...`. The scope is optional; where I used one, it is the skill directory or the area touched.
 - [ ] Signed off every commit (DCO) with `git commit -s`.
-- [ ] Run `python3 scripts/validate_skills.py`, `bash tests/validator/test.sh` and `bash tests/consumers/test.sh` and they pass.
+- [ ] Run `python3 scripts/validate_skills.py` and the test scripts CONTRIBUTING.md lists, and they pass.
 - [ ] Changed the access policy or the approval rule in every skill, every appendix, the README and `eval/README.md` together, or did not touch them.
 - [ ] Given every new or refreshed file under `references/` a `Source:` line, or regenerated it with `scripts/snapshot-references.sh`.
 

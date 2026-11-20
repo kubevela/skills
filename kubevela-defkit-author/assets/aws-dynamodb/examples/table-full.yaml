@@ -1,0 +1,72 @@
+# A provisioned table with a composite key, both kinds of index, a stream,
+# expiry, point-in-time recovery and tags. The values are illustrative.
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: sample-orders
+  namespace: team-a
+spec:
+  components:
+    - name: sample-orders
+      type: dynamodb-table
+      properties:
+        tableName: sample-orders-table
+        attributeDefinitions:
+          - attributeName: customerId
+            attributeType: "S"
+          - attributeName: orderId
+            attributeType: "S"
+          - attributeName: createdAt
+            attributeType: "N"
+          - attributeName: status
+            attributeType: "S"
+        keySchema:
+          - attributeName: customerId
+            keyType: HASH
+          - attributeName: orderId
+            keyType: RANGE
+        billingMode: PROVISIONED
+        provisionedThroughput:
+          readCapacityUnits: 5
+          writeCapacityUnits: 5
+        globalSecondaryIndexes:
+          - indexName: by-status
+            keySchema:
+              - attributeName: status
+                keyType: HASH
+              - attributeName: createdAt
+                keyType: RANGE
+            projection:
+              projectionType: INCLUDE
+              nonKeyAttributes:
+                - total
+            provisionedThroughput:
+              readCapacityUnits: 2
+              writeCapacityUnits: 2
+        localSecondaryIndexes:
+          - indexName: by-created
+            keySchema:
+              - attributeName: customerId
+                keyType: HASH
+              - attributeName: createdAt
+                keyType: RANGE
+            projection:
+              projectionType: KEYS_ONLY
+        streamSpecification:
+          streamEnabled: true
+          streamViewType: NEW_AND_OLD_IMAGES
+        timeToLive:
+          attributeName: expiresAt
+          enabled: true
+        continuousBackups:
+          pointInTimeRecoveryEnabled: true
+          recoveryPeriodInDays: 7
+        sseSpecification:
+          enabled: true
+          sseType: KMS
+        tableClass: STANDARD
+        deletionProtectionEnabled: false
+        tags:
+          - key: team
+            value: sample
+        deletionPolicy: delete

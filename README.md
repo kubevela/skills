@@ -47,11 +47,13 @@ kubevela-sre/                Investigate incidents with vela, a read-only Kubern
 kubevela-platform-engineer/  Change definitions safely; tested consumer-inventory script in scripts/
   references/                The five definition CRDs and DefinitionRevision, generated
 kubevela-defkit-author/      Author capabilities in Go with defkit, validate, render, deliver by PR
-  references/                defkit API map, worked examples from vela-go-definitions, pitfalls
+  assets/                    aws-dynamodb: a worked module with unit tests, samples and an emulator suite
+  scripts/                   Check a runtime verification record; summarise the emulator's fidelity report
+  references/                defkit API map, worked examples from vela-go-definitions, pitfalls, emulator tests
 clients/                     Setup for Claude Code, Codex, Cursor, Gemini CLI
 eval/                        Three-layer evaluation plan: structural, workflow, enforcement
 scripts/                     validate_skills.py, snapshot_crd_shape.py, snapshot-references.sh
-tests/                       Validator and consumer-inventory tests, run in CI
+tests/                       Validator, consumer-inventory, coverage-record and fidelity-summary tests, run in CI
 ```
 
 Each skill is a self-contained directory on the
@@ -117,9 +119,9 @@ fixtures that test this.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Run the validator and both test suites before
-opening a pull request; CI runs the same. Commit subjects are lowercase conventional
-commits such as `feat(kubevela-sre): ...`, signed off with `-s`.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Run the validator and the test suites it lists
+before opening a pull request; CI runs the same. Commit subjects are lowercase
+conventional commits such as `feat(kubevela-sre): ...`, signed off with `-s`.
 
 ## Community
 

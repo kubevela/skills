@@ -1,0 +1,9 @@
+{"schemaVersion": 1, "scoredAt": "2026-01-01T00:00:00+00:00", "units": [
+ {"unitId": "create-ok", "outcome": "pass", "kind": "wire", "services": ["com.amazonaws.dynamodb#DynamoDB_20120810"],
+  "detail": {"steps": [{"operation": "CreateTable", "outcome": "pass"}, {"operation": "DeleteTable", "outcome": "pass"}]}},
+ {"unitId": "create-rejected", "outcome": "fail", "kind": "wire", "services": ["com.amazonaws.dynamodb#DynamoDB_20120810"],
+  "detail": {"steps": [{"operation": "CreateTable", "outcome": "mismatch", "mismatch": "body"}, {"operation": "CreateTable", "outcome": "mismatch", "mismatch": "body"}]}},
+ {"unitId": "streams-only", "outcome": "pass", "kind": "wire", "services": ["com.amazonaws.dynamodbstreams#DynamoDBStreams_20120810"],
+  "detail": {"steps": [{"operation": "ListStreams", "outcome": "pass"}]}},
+ {"unitId": "no-detail", "outcome": "skipped", "kind": "behavioral", "services": ["com.amazonaws.dynamodb#DynamoDB_20120810"]}
+]}

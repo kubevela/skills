@@ -50,10 +50,11 @@ body:
     id: profile
     attributes:
       label: Execution profile
-      description: Whether the agent had `vela mcp` loaded or fell back to the plain `vela` CLI.
+      description: Whether the agent had `vela mcp` loaded, fell back to the plain `vela` CLI, or worked without a cluster.
       options:
         - MCP (vela mcp loaded)
         - CLI-assisted (vela CLI only)
+        - Offline authoring (no cluster)
         - Not sure
     validations:
       required: true
@@ -61,10 +62,8 @@ body:
     id: kubevela-version
     attributes:
       label: KubeVela version
-      description: Output of `vela version`, covering both the CLI and the controller, or the `meta` block of a tool result.
+      description: Output of `vela version`, covering both the CLI and the controller, or the `meta` block of a tool result. Leave empty when no cluster was involved (Offline authoring, scripts, validator).
       placeholder: e.g. v1.12.0
-    validations:
-      required: true
   - type: input
     id: skills-version
     attributes:

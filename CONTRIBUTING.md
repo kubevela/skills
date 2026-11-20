@@ -83,8 +83,8 @@ text literally and a maintainer who will have to debug what it did.
 ## Commit messages
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/) with a
-lowercase type, `<type>(<scope>): <subject>`, where the scope is the skill directory or
-the area touched:
+lowercase type, `<type>(<scope>): <subject>`. The scope is optional; when present it is
+the skill directory or the area touched:
 
 ```
 feat(kubevela-sre): read endpoint provenance before diagnosing a provisioner

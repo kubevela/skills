@@ -7,9 +7,9 @@ the rest of the KubeVela project.
 
 ## What counts as a security issue here
 
-- A skill, appendix or client template that leads an agent to mutate a cluster, disclose
-  secret values or customer data, or bypass the access policy and the approval rule the
-  skills quote.
+- A skill, appendix or client template that leads an agent to mutate a cluster without
+  the approval step and the write flag the skills require, to disclose secret values or
+  customer data, or to bypass the access policy the skills quote.
 - A script under a skill's `scripts/` or under `scripts/` that can be made to run
   arbitrary commands or exfiltrate data through the inputs it reads.
 - Retrieved content (logs, annotations, definition descriptions, tool results) that a

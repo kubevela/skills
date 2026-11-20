@@ -15,7 +15,7 @@ Fixes #
 I have:
 
 - [ ] Read and followed [CONTRIBUTING.md](../CONTRIBUTING.md), including the rules for what belongs in a skill.
-- [ ] Written commit subjects as lowercase conventional commits, for example `feat(kubevela-sre): ...`, with the skill directory as the scope.
+- [ ] Written commit subjects as lowercase conventional commits, for example `feat(kubevela-sre): ...`, with the skill directory or the area touched as the scope.
 - [ ] Signed off every commit (DCO) with `git commit -s`.
 - [ ] Run `python3 scripts/validate_skills.py`, `bash tests/validator/test.sh` and `bash tests/consumers/test.sh` and they pass.
 - [ ] Changed the access policy or the approval rule in every skill, every appendix, the README and `eval/README.md` together, or did not touch them.
@@ -26,9 +26,9 @@ I have:
 <!--
 
 A skill is a procedure an agent follows literally. Say which client you ran it in
-(Claude Code, Codex, Cursor, Gemini CLI), in which profile (MCP or CLI-assisted), against
-which KubeVela version, and what the agent did at each stopping point. If you did not run
-it, say so.
+(Claude Code, Codex, Cursor, Gemini CLI), in which profile (MCP, CLI-assisted or Offline
+authoring), against which KubeVela version, and what the agent did at each stopping
+point. If you did not run it, say so.
 
 -->
 

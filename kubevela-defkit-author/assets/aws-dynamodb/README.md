@@ -38,15 +38,21 @@ read as the boolean `false`.
 
 ## Parameters
 
-Every parameter has the name and shape of the `Table` field it sets. Only
-`attributeDefinitions` and `keySchema` are required. `tableName` defaults to the component
-name. No other parameter has a default: DynamoDB's own defaults apply.
+Every parameter has the name and shape of the `Table` field it sets. Three are required:
+`attributeDefinitions`, `keySchema` and `billingMode`. `tableName` defaults to the
+component name; set it when that name is shorter than 3 characters, the shortest a table
+name may be. No other parameter has a default: DynamoDB's own defaults apply.
 
-Two parameters are not `Table` spec fields:
+One parameter is not a `Table` spec field: `deletionPolicy` (`delete` or `retain`) sets
+ACK's `services.k8s.aws/deletion-policy` annotation.
 
-- `deletionPolicy` (`delete` or `retain`) sets ACK's `services.k8s.aws/deletion-policy`
-  annotation.
-- `tableName` falls back to the component name when unset.
+Rules that span parameters are checked when the Application renders, with a message that
+names the rule:
+
+- `PROVISIONED` needs `provisionedThroughput` and takes no `onDemandThroughput`;
+  `PAY_PER_REQUEST` takes no `provisionedThroughput`.
+- A projection has `nonKeyAttributes` with `projectionType: INCLUDE`, and only then.
+- A request limit is at least 1, or -1 to remove it.
 
 The component is healthy when ACK reports `ACK.ResourceSynced` as `True` and
 `ACK.Terminal` is not `True`. Its status message carries the table status and ARN.
@@ -81,7 +87,8 @@ context. It needs:
 - KubeVela on the cluster, and the `vela` CLI (on `PATH`, or `VELA_BIN`).
 - An ACK DynamoDB controller installed with the emulator as its endpoint. The suite
   refuses to run when a DynamoDB controller on the cluster has a different endpoint or
-  none, since that controller talks to AWS.
+  none, since that controller talks to AWS. Deploy the emulator before the controller:
+  the controller calls it when it starts and does not come up without it.
 
   ```shell
   helm install ack-dynamodb oci://public.ecr.aws/aws-controllers-k8s/dynamodb-chart \

@@ -59,6 +59,14 @@ expect "rejects a document without the section" 1 'no "## Runtime verification" 
   "$(variant 's/^## Runtime verification/## Notes/')"
 expect "rejects a parameter that has no row" 1 'parameter "size" has no row' \
   "$(variant '/^| size, at creation/d;s/Counts: 2 verified/Counts: 1 verified/')" --cue "$cue"
-expect "does not take a helper field for a parameter" 0 "OK" "$good" --cue "$cue"
+expect "does not take a helper field or a validator block for a parameter" 0 "OK" "$good" --cue "$cue"
+expect "rejects a row with more than three cells" 1 '"name": the row has 4 cells, not 3' \
+  "$(variant 's/| name | verified end to end | DescribeWidget |/| name | verified end to end | DescribeWidget | extra |/')"
+expect "accepts an escaped bar inside a cell" 0 "OK" \
+  "$(variant 's/| name | verified end to end | DescribeWidget |/| name | verified end to end | DescribeWidget, value `a\\\\|b` |/')"
+
+# A parameter block at column 0 after a blank line: the indent must not swallow the newline.
+printf 'widget: type: "component"\n\nparameter: {\n\tname!: string\n\tmissing?: int\n}\n' > "$tmp/flat.cue"
+expect "reads a parameter block at column 0" 1 'parameter "missing" has no row' "$good" --cue "$tmp/flat.cue"
 
 exit $fail

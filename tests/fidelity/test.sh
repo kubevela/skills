@@ -34,6 +34,14 @@ check "exits 2 for a service that is not in the report" "$?" "2"
 python3 "$script" --service dynamodb --file "$here/missing.json" > "$tmp/out" 2>&1
 check "exits 2 when the report cannot be read" "$?" "2"
 
+out="$(python3 "$script" --service dynamodb --file "$report" --operations 'CreateTable, DeleteTable')"
+check "ignores spaces around operation names" "$(grep -c -E '^(CreateTable|DeleteTable):' <<< "$out")" "2"
+
+echo '[1, 2, 3]' > "$tmp/list.json"
+python3 "$script" --service dynamodb --file "$tmp/list.json" > "$tmp/out" 2>&1
+check "exits 2 for JSON that is not a report" "$?" "2"
+check "says the file is not a report" "$(grep -c 'cannot read the fidelity report' "$tmp/out")" "1"
+
 gzip -c "$report" > "$tmp/scores.json.gz"
 check "reads a gzipped report" \
   "$(python3 "$script" --service dynamodb --file "$tmp/scores.json.gz" | grep -c '^CreateTable: 1 passed, 2 did not')" "1"

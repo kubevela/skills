@@ -81,7 +81,10 @@ func componentsHealthy(ctx context.Context, namespace, name string) (bool, error
 	if err != nil {
 		return false, err
 	}
-	services, _, _ := unstructured.NestedSlice(app.Object, "status", "services")
+	services, _, err := unstructured.NestedSlice(app.Object, "status", "services")
+	if err != nil {
+		return false, fmt.Errorf("status.services of Application %s/%s: %w", namespace, name, err)
+	}
 	if len(services) == 0 {
 		return false, nil
 	}

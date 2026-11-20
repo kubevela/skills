@@ -119,8 +119,8 @@ fixtures that test this.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Run the validator and both test suites before
-opening a pull request; CI runs the same.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Run the validator and the test suites it lists
+before opening a pull request; CI runs the same.
 
 ## License
 

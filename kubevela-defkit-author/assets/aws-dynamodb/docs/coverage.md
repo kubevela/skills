@@ -32,9 +32,16 @@ what was checked against a running service.
 | VectorIndexes | — not in CRD | — not reachable from KubeVela |
 | What happens to the table on delete | annotation `services.k8s.aws/deletion-policy` | deletionPolicy |
 
-Sources: the DynamoDB API reference for CreateTable and its data types,
-<https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_CreateTable.html>,
-fetched 2026-11-20; the `Table` CRD served by
+Sources, fetched 2026-11-20 from
+<https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/>: `API_CreateTable`
+and the data types it uses (`AttributeDefinition`, `KeySchemaElement`,
+`ProvisionedThroughput`, `OnDemandThroughput`, `GlobalSecondaryIndex`,
+`LocalSecondaryIndex`, `Projection`, `StreamSpecification`, `SSESpecification`, `Tag`,
+`WarmThroughput`), `API_UpdateTimeToLive` with `TimeToLiveSpecification`, and
+`PointInTimeRecoverySpecification`. The limits in the schema come from these pages. The
+other operations the controller calls (UpdateTable, UpdateContributorInsights,
+PutResourcePolicy, TagResource, DeleteTable) were not read for limits; their behaviour is
+recorded under Runtime verification. The CRD is the `Table` served by
 `public.ecr.aws/aws-controllers-k8s/dynamodb-controller:1.16.0`.
 
 Why the gaps exist:
@@ -50,11 +57,23 @@ Why the gaps exist:
 Decisions that are not gaps:
 
 - **No defaults.** The API reference documents none for these fields, so the definition
-  sets none and DynamoDB's behaviour applies. `billingMode` unset means PROVISIONED, which
-  then needs `provisionedThroughput`.
-- **billingMode and its throughput are separate optional parameters**, not a conditional
-  block: an unset `billingMode` still means PROVISIONED, so the schema cannot tell from
-  `billingMode` alone which throughput block applies. DynamoDB rejects a mismatch.
+  sets none and DynamoDB's behaviour applies.
+- **billingMode is required**, although the API does not require it. Unset means
+  PROVISIONED, which needs capacity numbers, so a table with neither can never be
+  created; and how a table is billed is a cost decision for the author to state. With
+  the mode always present, the rules between it and the throughput blocks are checked
+  at render: PROVISIONED needs `provisionedThroughput` and takes no
+  `onDemandThroughput`; PAY_PER_REQUEST takes no `provisionedThroughput`.
+- **Projection and request-limit rules are checked at render** too: `nonKeyAttributes`
+  goes with `INCLUDE` and only with it, and a request limit is at least 1 or -1.
+- **What the schema does not check.** That every key attribute is declared in
+  `attributeDefinitions`, that a key is one HASH optionally followed by one RANGE, and
+  that an index's capacity matches the table's billing mode. These span list elements,
+  and written as schema they would fail with errors harder to read than DynamoDB's own.
+  The service rejects them, ACK sets `ACK.Terminal`, and the component is unhealthy; the
+  suite proves that path.
+- **A short component name needs `tableName`.** The table name defaults to the component
+  name, and DynamoDB wants at least 3 characters.
 - **Limits in the schema** come from the API reference: key and index name patterns,
   1 to 2 key elements, at most 20 global and 5 local indexes, capacity of at least 1,
   recovery period 1 to 35 days, at most 50 tags.
@@ -70,8 +89,8 @@ The emulator's fidelity report for 1.0.533 was read first for the operations the
 controller calls. UpdateTimeToLive, UpdateContinuousBackups, UpdateContributorInsights,
 PutResourcePolicy and DeleteTable pass every scenario. CreateTable, UpdateTable,
 DescribeTable and TagResource have mismatches, all in scenarios about how invalid input
-is rejected. The one limit found at runtime, request limits on an index, is not in the
-report.
+is rejected. The one limit found at runtime, the refusal of `onDemandThroughput` on a global
+secondary index, is not in the report.
 
 | Lever | Outcome | Evidence or reason |
 |---|---|---|

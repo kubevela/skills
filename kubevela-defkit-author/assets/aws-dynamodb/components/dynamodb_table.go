@@ -40,7 +40,6 @@ const (
 	ackDeletionPolicyAnnotation = "services.k8s.aws/deletion-policy"
 
 	keySchemaElementRef = "KeySchemaElement"
-	projectionRef       = "Projection"
 )
 
 var (
@@ -80,13 +79,26 @@ func keySchemaElement() *defkit.MapParam {
 	)
 }
 
-// projection is the shape that says which attributes an index copies from the table.
+// projection is the shape that says which attributes an index copies from the
+// table. nonKeyAttributes goes with projectionType INCLUDE and with nothing else.
+//
+// Both kinds of index use it. It is written into each of them rather than
+// registered once with Helper, because a helper type does not carry validators.
 func projection() *defkit.MapParam {
+	projectionType := defkit.LocalField("projectionType")
+	nonKeyAttributes := defkit.LocalField("nonKeyAttributes")
 	return defkit.Object("projection").WithFields(
 		defkit.Enum("projectionType").Optional().Values("ALL", "KEYS_ONLY", "INCLUDE").
 			Description("ALL copies every attribute, KEYS_ONLY only the keys, INCLUDE the keys plus nonKeyAttributes."),
 		defkit.Array("nonKeyAttributes").Of(defkit.ParamTypeString).Optional().MinItems(1).MaxItems(20).
-			Description("Extra attributes to copy into the index. Only with projectionType INCLUDE."),
+			Description("Extra attributes to copy into the index. Required with projectionType INCLUDE, not allowed otherwise."),
+	).Validators(
+		defkit.Validate("nonKeyAttributes is required when projectionType is INCLUDE").
+			OnlyWhen(projectionType.IsSet()).
+			FailWhen(defkit.And(projectionType.Eq("INCLUDE"), nonKeyAttributes.NotSet())),
+		defkit.Validate("nonKeyAttributes is only allowed when projectionType is INCLUDE").
+			OnlyWhen(defkit.And(projectionType.IsSet(), nonKeyAttributes.IsSet())).
+			FailWhen(projectionType.Ne("INCLUDE")),
 	)
 }
 
@@ -100,14 +112,25 @@ func throughputFields() []defkit.Param {
 	}
 }
 
-// onDemandFields cap the request units of an on-demand table or index.
-func onDemandFields() []defkit.Param {
-	return []defkit.Param{
-		defkit.Int("maxReadRequestUnits").Optional().Min(-1).
-			Description("Most read request units allowed. -1 removes the limit."),
-		defkit.Int("maxWriteRequestUnits").Optional().Min(-1).
-			Description("Most write request units allowed. -1 removes the limit."),
-	}
+// onDemandLimits caps the request units of an on-demand table or index. Each
+// limit is a positive number, or -1 to remove the limit: zero is neither.
+func onDemandLimits(description string) *defkit.MapParam {
+	read := defkit.LocalField("maxReadRequestUnits")
+	write := defkit.LocalField("maxWriteRequestUnits")
+	return defkit.Object("onDemandThroughput").Optional().
+		WithFields(
+			defkit.Int("maxReadRequestUnits").Optional().Min(-1).
+				Description("Most read request units allowed. At least 1, or -1 to remove the limit."),
+			defkit.Int("maxWriteRequestUnits").Optional().Min(-1).
+				Description("Most write request units allowed. At least 1, or -1 to remove the limit."),
+		).
+		Validators(
+			defkit.Validate("maxReadRequestUnits must be at least 1, or -1 to remove the limit").
+				OnlyWhen(read.IsSet()).FailWhen(read.Eq(0)),
+			defkit.Validate("maxWriteRequestUnits must be at least 1, or -1 to remove the limit").
+				OnlyWhen(write.IsSet()).FailWhen(write.Eq(0)),
+		).
+		Description(description)
 }
 
 // warmFields pre-warm a table or index for a known load.
@@ -125,7 +148,7 @@ func warmFields() []defkit.Param {
 func DynamodbTable() *defkit.ComponentDefinition {
 	tableName = defkit.String("tableName").Optional().
 		Pattern(`^[a-zA-Z0-9_.-]{3,255}$`).
-		Description("Name of the table in AWS. Defaults to the component name. Cannot change after creation.")
+		Description("Name of the table in AWS, 3 to 255 characters. Defaults to the component name, so set it when that name is shorter than 3 characters. Cannot change after creation.")
 	attributeDefinitions = defkit.Array("attributeDefinitions").Required().MinItems(1).
 		WithFields(
 			defkit.String("attributeName").Required().MinLen(1).MaxLen(255).
@@ -137,14 +160,15 @@ func DynamodbTable() *defkit.ComponentDefinition {
 	keySchema = defkit.Array("keySchema").Required().MinItems(1).MaxItems(2).
 		WithSchemaRef(keySchemaElementRef).
 		Description("The primary key: one HASH key, optionally followed by one RANGE key. Cannot change after creation.")
-	billingMode = defkit.Enum("billingMode").Optional().Values("PROVISIONED", "PAY_PER_REQUEST").
-		Description("PROVISIONED needs provisionedThroughput; PAY_PER_REQUEST must not have it. DynamoDB uses PROVISIONED when unset.")
+	// Required although the API has a default: an unset mode means PROVISIONED,
+	// which needs capacity numbers, so a table without either can never be
+	// created. How a table is billed is the author's choice to state.
+	billingMode = defkit.Enum("billingMode").Required().Values("PROVISIONED", "PAY_PER_REQUEST").
+		Description("How the table is billed. PROVISIONED needs provisionedThroughput; PAY_PER_REQUEST must not have it.")
 	provisionedThroughput = defkit.Object("provisionedThroughput").Optional().
 		WithFields(throughputFields()...).
-		Description("Capacity of a PROVISIONED table.")
-	onDemandThroughput = defkit.Object("onDemandThroughput").Optional().
-		WithFields(onDemandFields()...).
-		Description("Upper limits for a PAY_PER_REQUEST table.")
+		Description("Capacity of a PROVISIONED table. Required with PROVISIONED, not allowed with PAY_PER_REQUEST.")
+	onDemandThroughput = onDemandLimits("Upper limits for a PAY_PER_REQUEST table. Not allowed with PROVISIONED.")
 	warmThroughput = defkit.Object("warmThroughput").Optional().
 		WithFields(warmFields()...).
 		Description("Throughput the table is pre-warmed for.")
@@ -154,12 +178,11 @@ func DynamodbTable() *defkit.ComponentDefinition {
 				Description("Name of the index, unique within the table."),
 			defkit.Array("keySchema").Required().MinItems(1).WithSchemaRef(keySchemaElementRef).
 				Description("Key of the index."),
-			defkit.Object("projection").Required().WithSchemaRef(projectionRef).
+			projection().Required().
 				Description("Attributes copied into the index."),
 			defkit.Object("provisionedThroughput").Optional().WithFields(throughputFields()...).
 				Description("Capacity of the index on a PROVISIONED table."),
-			defkit.Object("onDemandThroughput").Optional().WithFields(onDemandFields()...).
-				Description("Upper limits of the index on a PAY_PER_REQUEST table."),
+			onDemandLimits("Upper limits of the index on a PAY_PER_REQUEST table."),
 			defkit.Object("warmThroughput").Optional().WithFields(warmFields()...).
 				Description("Throughput the index is pre-warmed for."),
 		).
@@ -170,7 +193,7 @@ func DynamodbTable() *defkit.ComponentDefinition {
 				Description("Name of the index, unique within the table."),
 			defkit.Array("keySchema").Required().MinItems(1).WithSchemaRef(keySchemaElementRef).
 				Description("Key of the index. It starts with the table's HASH key."),
-			defkit.Object("projection").Required().WithSchemaRef(projectionRef).
+			projection().Required().
 				Description("Attributes copied into the index."),
 		).
 		Description("Local secondary indexes: another sort key under the table's partition key. Cannot change after creation.")
@@ -214,7 +237,7 @@ func DynamodbTable() *defkit.ComponentDefinition {
 		Description("Refuse to delete the table while enabled.")
 	tableClass = defkit.Enum("tableClass").Optional().Values("STANDARD", "STANDARD_INFREQUENT_ACCESS").
 		Description("Storage class of the table.")
-	resourcePolicy = defkit.String("resourcePolicy").Optional().
+	resourcePolicy = defkit.String("resourcePolicy").Optional().MaxLen(20480).
 		Description("Resource-based IAM policy for the table, as a JSON document of at most 20 KB.")
 	tags = defkit.Array("tags").Optional().MaxItems(50).
 		WithFields(
@@ -241,8 +264,15 @@ func DynamodbTable() *defkit.ComponentDefinition {
 			StringField("arn", "status.ackResourceMetadata.arn", "").
 			Message("DynamoDB table \\(tableStatus); arn: \\(arn)").
 			Build()).
+		Validators(
+			defkit.Validate("provisionedThroughput is required when billingMode is PROVISIONED").
+				FailWhen(defkit.And(billingMode.Eq("PROVISIONED"), provisionedThroughput.NotSet())),
+			defkit.Validate("provisionedThroughput is not allowed when billingMode is PAY_PER_REQUEST").
+				FailWhen(defkit.And(billingMode.Eq("PAY_PER_REQUEST"), provisionedThroughput.IsSet())),
+			defkit.Validate("onDemandThroughput is not allowed when billingMode is PROVISIONED").
+				FailWhen(defkit.And(billingMode.Eq("PROVISIONED"), onDemandThroughput.IsSet())),
+		).
 		Helper(keySchemaElementRef, keySchemaElement()).
-		Helper(projectionRef, projection()).
 		Params(
 			tableName, attributeDefinitions, keySchema,
 			billingMode, provisionedThroughput, onDemandThroughput, warmThroughput,

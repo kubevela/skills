@@ -52,12 +52,20 @@ result is worth a worked module of its own next to `assets/aws-dynamodb`.
    - A controller whose `endpointOverride` is the emulator's Service URL: proceed.
    - A controller with no override, or another one: it talks to AWS or to something else.
      Stop. Do not create resources through it and do not reconfigure it.
+   - An endpoint you cannot establish: the read was denied, several controller
+     Deployments serve the service, or the endpoint is not a literal value on the
+     Deployment. Report the endpoint as unknown and stop before creating anything. Unknown
+     is not "probably the emulator".
 
    Without the MCP tools, read the `AWS_ENDPOINT_URL` environment variable of the
    controller's Deployment; an ACK chart sets it from `aws.endpoint_url`. The suite makes
    the same check itself with `RequireACKOnEmulator`, so it holds without an agent too.
-3. **Install the controller for the emulator**, after the user agrees. Look the chart
-   version up; do not guess it. The keys are made up: the emulator ignores them.
+3. **Install the controller for the emulator**, after the user agrees. The emulator
+   goes first: an ACK controller calls STS when it starts, and without an emulator to
+   answer it never becomes ready. Apply the manifest of a
+   [kubevela/cloud-emulators release](https://github.com/kubevela/cloud-emulators/releases)
+   and wait for its rollout, then install the controller. Look the chart version up; do
+   not guess it. The keys are made up: the emulator ignores them.
 
    ```sh
    kubectl create namespace ack-system
@@ -103,8 +111,9 @@ free of a cluster. Its setup uses `testkit` and nothing else for the cluster sid
 
 Rules the specs follow:
 
-- **One spec per lever, or per group of levers that only make sense together.** A lever
-  without a spec is untested, and untested needs a blocker (see the record below).
+- **One spec per lever, or per group of levers that only make sense together**, such as
+  a billing mode and its capacity. A lever without a spec is untested, and untested needs
+  a blocker (see the record below).
 - **Apply through KubeVela, read back through the service.** Apply an Application that
   uses the definition, then assert on the service's own API (`DescribeTable`,
   `GetBucketVersioning`) with the AWS SDK. A rendered object, an accepted server check and

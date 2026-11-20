@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -312,18 +313,22 @@ var _ = Describe("dynamodb-table", func() {
 			"billingMode":          "PAY_PER_REQUEST",
 			"deletionPolicy":       "retain",
 		})
+		// ACK will not delete this table, so the suite does, whatever happens below.
+		DeferCleanup(func(ctx SpecContext) {
+			_, err := ddb.DeleteTable(ctx, &dynamodb.DeleteTableInput{TableName: aws.String(name)})
+			var gone *types.ResourceNotFoundException
+			if !errors.As(err, &gone) {
+				Expect(err).NotTo(HaveOccurred())
+			}
+		}, NodeTimeout(time.Minute))
 		expectHealthy(ctx, name)
 
 		Expect(cluster.Dynamic.Resource(applicationResource).Namespace(run.Namespace).Delete(ctx, name, metav1.DeleteOptions{})).To(Succeed())
-		Eventually(func() error {
+		Eventually(func() bool {
 			_, err := cluster.Dynamic.Resource(tableResource).Namespace(run.Namespace).Get(ctx, name, metav1.GetOptions{})
-			return err
-		}).WithTimeout(settle).WithPolling(poll).Should(HaveOccurred(), "the Table object goes away")
+			return apierrors.IsNotFound(err)
+		}).WithTimeout(settle).WithPolling(poll).Should(BeTrue(), "the Table object goes away")
 		Expect(tableExists(ctx, name)).To(BeTrue(), "the table stays in the service")
-
-		// The fixture is this suite's to clean up, since ACK no longer owns it.
-		_, err := ddb.DeleteTable(ctx, &dynamodb.DeleteTableInput{TableName: aws.String(name)})
-		Expect(err).NotTo(HaveOccurred())
 	}, SpecTimeout(6*time.Minute))
 
 	It("is unhealthy when the service rejects the table for good", func(ctx SpecContext) {
@@ -466,8 +471,9 @@ var _ = Describe("dynamodb-table", func() {
 		Expect(err).NotTo(HaveOccurred())
 		keyARN := aws.ToString(created.KeyMetadata.Arn)
 		DeferCleanup(func(ctx SpecContext) {
-			_, _ = kmsAPI.ScheduleKeyDeletion(ctx, &kms.ScheduleKeyDeletionInput{KeyId: aws.String(keyARN), PendingWindowInDays: aws.Int32(7)})
-		})
+			_, err := kmsAPI.ScheduleKeyDeletion(ctx, &kms.ScheduleKeyDeletionInput{KeyId: aws.String(keyARN), PendingWindowInDays: aws.Int32(7)})
+			Expect(err).NotTo(HaveOccurred(), "the fixture key stays in the emulator")
+		}, NodeTimeout(time.Minute))
 
 		applyTable(ctx, name, obj{
 			"attributeDefinitions": list{attr("id", "S")},

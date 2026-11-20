@@ -10,6 +10,8 @@ on:
     paths:
       - "kubevela-defkit-author/assets/**"
       - "kubevela-defkit-author/scripts/**"
+      - "kubevela-defkit-author/SKILL.md"
+      - "kubevela-defkit-author/references/**"
       - ".github/workflows/reference-module.yml"
   schedule:
     - cron: "23 5 * * 1"
@@ -99,6 +101,14 @@ jobs:
           echo "VELA_BIN=$RUNNER_TEMP/linux-amd64/vela" >> "$GITHUB_ENV"
           "$RUNNER_TEMP/linux-amd64/vela" version
 
+      - name: Deploy the AWS Emulator
+        run: |
+          # The version the suite pins, so the two cannot drift apart.
+          version="$(sed -n 's/^const emulatorVersion = "\(.*\)"$/\1/p' "$MODULE/test/emulator/suite_test.go")"
+          test -n "$version"
+          kubectl apply -f "https://github.com/kubevela/cloud-emulators/releases/download/aws-emulator-v${version}/aws-emulator-${version}.yaml"
+          kubectl -n aws-emulator rollout status deployment/aws-emulator --timeout 5m
+
       - name: Install the ACK DynamoDB controller pointed at the emulator
         run: |
           kubectl create namespace ack-system
@@ -110,7 +120,7 @@ jobs:
             --set aws.endpoint_url="$EMULATOR_ENDPOINT" \
             --set aws.allow_unsafe_aws_endpoint_urls=true \
             --set aws.credentials.secretName=ack-emulator-credentials
-          # The controller starts before the emulator exists; it only needs it at reconcile time.
+          # The controller calls STS on the emulator when it starts.
           kubectl -n ack-system rollout status deployment --timeout 5m
 
       - name: Emulator suite

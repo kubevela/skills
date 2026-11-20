@@ -36,7 +36,10 @@ def load(args):
             raw = response.read()
     if raw[:2] == b"\x1f\x8b":
         raw = gzip.decompress(raw)
-    return json.loads(raw)
+    report = json.loads(raw)
+    if not isinstance(report, dict) or not isinstance(report.get("units"), list):
+        raise ValueError('not a fidelity report: expected an object with a "units" list')
+    return report
 
 
 def service_matches(wanted, services):
@@ -80,7 +83,7 @@ def main():
                 seen.add(operation)
                 failing[operation].append(f'{unit.get("unitId")} ({step.get("mismatch") or step.get("outcome")})')
 
-    wanted = [o for o in args.operations.split(",") if o] or sorted(steps)
+    wanted = [o.strip() for o in args.operations.split(",") if o.strip()] or sorted(steps)
     missing = [o for o in wanted if o not in steps]
 
     print(f'AWS Emulator fidelity for {args.service}, scored {report.get("scoredAt", "?")}: {len(units)} scenarios')

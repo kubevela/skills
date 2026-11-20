@@ -97,13 +97,14 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 }, NodeTimeout(8*time.Minute))
 
 var _ = AfterSuite(func(ctx SpecContext) {
+	// First, so the connection is closed even when the cleanup below fails.
+	if stopForward != nil {
+		stopForward()
+	}
 	if cluster != nil && run != nil {
 		By("deleting this run's Applications and waiting for ACK to delete their tables")
 		Expect(cluster.EndRun(ctx, run,
 			[]schema.GroupVersionResource{applicationResource},
 			[]schema.GroupVersionResource{tableResource})).To(Succeed())
-	}
-	if stopForward != nil {
-		stopForward()
 	}
 }, NodeTimeout(5*time.Minute))

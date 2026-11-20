@@ -13,6 +13,12 @@ template: {
 			enabled!: bool
 		}
 		replicas?: [...string]
+		_validate: {
+			"size is required with encryption": true
+		}
+		_validate: {
+			"another rule": true
+		}
 	}
 	#Helper: {
 		ignored!: string

@@ -14,8 +14,10 @@ a pass must say why:
     endpoint-limited      the third cell quotes the error or names the limitation
     untested              the third cell names what blocks the test
 
-"Not exercised yet", "later" or "TODO" is not a reason: nothing blocks such a
-lever, so the fix is a test, not a table row. The line that starts with
+Placeholders such as "not exercised yet", "later" or "TODO" are rejected:
+nothing blocks such a lever, so the fix is a test, not a table row. The check
+knows a fixed list of placeholders; whether another reason is a real blocker
+is for the reviewer to judge. The line that starts with
 "Counts:" must agree with the table.
 
 With --cue, every top-level parameter of the generated definition must be named
@@ -36,7 +38,13 @@ NOT_A_REASON = re.compile(
 
 
 def cells(line):
-    return [c.strip() for c in line.strip().strip("|").split("|")]
+    # Split on "|" but not on the escaped "\|" a cell may contain.
+    line = line.strip()
+    if line.startswith("|"):
+        line = line[1:]
+    if line.endswith("|") and not line.endswith("\\|"):
+        line = line[:-1]
+    return [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", line)]
 
 
 def runtime_rows(text):
@@ -60,7 +68,8 @@ def runtime_rows(text):
 
 def top_level_parameters(cue):
     """Names declared directly inside the `parameter: {` block of generated CUE."""
-    match = re.search(r"^(\s*)parameter:\s*\{\s*$", cue, re.MULTILINE)
+    # [ \t]*, not \s*: the indent must stay on the line of `parameter:`.
+    match = re.search(r"^([ \t]*)parameter:[ \t]*\{[ \t]*$", cue, re.MULTILINE)
     if not match:
         return []
     indent = match.group(1)
@@ -69,7 +78,8 @@ def top_level_parameters(cue):
         if line.startswith(indent + "}"):
             break
         field = re.match(r"^" + re.escape(indent) + r"\t([A-Za-z_][A-Za-z0-9_]*)[?!]?:", line)
-        if field:
+        # A name starting with "_" is a hidden field, such as a validator block.
+        if field and not field.group(1).startswith("_") and field.group(1) not in names:
             names.append(field.group(1))
     return names
 
@@ -98,11 +108,14 @@ def main():
     levers = []
     for row in rows[1:]:
         lever = row[0] if row else ""
-        outcome = row[1].lower() if len(row) > 1 else ""
-        reason = row[2] if len(row) > 2 else ""
         levers.append(lever)
+        if len(row) != 3:
+            problems.append(f'"{lever}": the row has {len(row)} cells, not 3; a "|" inside a cell must be written as "\\|"')
+            continue
+        outcome = row[1].lower()
+        reason = row[2]
         if outcome not in OUTCOMES:
-            problems.append(f'"{lever}": outcome "{row[1] if len(row) > 1 else ""}" is not one of: {", ".join(OUTCOMES)}')
+            problems.append(f'"{lever}": outcome "{row[1]}" is not one of: {", ".join(OUTCOMES)}')
             continue
         counts[outcome] += 1
         if NOT_A_REASON.match(reason):

@@ -107,7 +107,7 @@ template: {
 		}
 	}
 	parameter: {
-		// +usage=Name of the table in AWS. Defaults to the component name. Cannot change after creation.
+		// +usage=Name of the table in AWS, 3 to 255 characters. Defaults to the component name, so set it when that name is shorter than 3 characters. Cannot change after creation.
 		tableName?: string & =~"^[a-zA-Z0-9_.-]{3,255}$"
 		// +usage=The attributes used as keys by the table and its indexes. Other attributes are not declared.
 		attributeDefinitions!: list.MinItems(1) & [...{
@@ -118,21 +118,37 @@ template: {
 		}]
 		// +usage=The primary key: one HASH key, optionally followed by one RANGE key. Cannot change after creation.
 		keySchema!: list.MinItems(1) & list.MaxItems(2) & [...#KeySchemaElement]
-		// +usage=PROVISIONED needs provisionedThroughput; PAY_PER_REQUEST must not have it. DynamoDB uses PROVISIONED when unset.
-		billingMode?: "PROVISIONED" | "PAY_PER_REQUEST"
-		// +usage=Capacity of a PROVISIONED table.
+		// +usage=How the table is billed. PROVISIONED needs provisionedThroughput; PAY_PER_REQUEST must not have it.
+		billingMode!: "PROVISIONED" | "PAY_PER_REQUEST"
+		// +usage=Capacity of a PROVISIONED table. Required with PROVISIONED, not allowed with PAY_PER_REQUEST.
 		provisionedThroughput?: {
 			// +usage=Strongly consistent reads per second.
 			readCapacityUnits!: int & >=1
 			// +usage=Writes per second.
 			writeCapacityUnits!: int & >=1
 		}
-		// +usage=Upper limits for a PAY_PER_REQUEST table.
+		// +usage=Upper limits for a PAY_PER_REQUEST table. Not allowed with PROVISIONED.
 		onDemandThroughput?: {
-			// +usage=Most read request units allowed. -1 removes the limit.
+			// +usage=Most read request units allowed. At least 1, or -1 to remove the limit.
 			maxReadRequestUnits?: int & >=-1
-			// +usage=Most write request units allowed. -1 removes the limit.
+			// +usage=Most write request units allowed. At least 1, or -1 to remove the limit.
 			maxWriteRequestUnits?: int & >=-1
+			if maxReadRequestUnits != _|_ {
+				_validate: {
+					"maxReadRequestUnits must be at least 1, or -1 to remove the limit": true
+					if maxReadRequestUnits == 0 {
+						"maxReadRequestUnits must be at least 1, or -1 to remove the limit": false
+					}
+				}
+			}
+			if maxWriteRequestUnits != _|_ {
+				_validate: {
+					"maxWriteRequestUnits must be at least 1, or -1 to remove the limit": true
+					if maxWriteRequestUnits == 0 {
+						"maxWriteRequestUnits must be at least 1, or -1 to remove the limit": false
+					}
+				}
+			}
 		}
 		// +usage=Throughput the table is pre-warmed for.
 		warmThroughput?: {
@@ -148,7 +164,28 @@ template: {
 			// +usage=Key of the index.
 			keySchema!: list.MinItems(1) & [...#KeySchemaElement]
 			// +usage=Attributes copied into the index.
-			projection!: #Projection
+			projection!: {
+				// +usage=ALL copies every attribute, KEYS_ONLY only the keys, INCLUDE the keys plus nonKeyAttributes.
+				projectionType?: "ALL" | "KEYS_ONLY" | "INCLUDE"
+				// +usage=Extra attributes to copy into the index. Required with projectionType INCLUDE, not allowed otherwise.
+				nonKeyAttributes?: list.MinItems(1) & list.MaxItems(20) & [...string]
+				if projectionType != _|_ {
+					_validate: {
+						"nonKeyAttributes is required when projectionType is INCLUDE": true
+						if projectionType == "INCLUDE" && nonKeyAttributes == _|_ {
+							"nonKeyAttributes is required when projectionType is INCLUDE": false
+						}
+					}
+				}
+				if projectionType != _|_ && nonKeyAttributes != _|_ {
+					_validate: {
+						"nonKeyAttributes is only allowed when projectionType is INCLUDE": true
+						if projectionType != "INCLUDE" {
+							"nonKeyAttributes is only allowed when projectionType is INCLUDE": false
+						}
+					}
+				}
+			}
 			// +usage=Capacity of the index on a PROVISIONED table.
 			provisionedThroughput?: {
 				// +usage=Strongly consistent reads per second.
@@ -158,10 +195,26 @@ template: {
 			}
 			// +usage=Upper limits of the index on a PAY_PER_REQUEST table.
 			onDemandThroughput?: {
-				// +usage=Most read request units allowed. -1 removes the limit.
+				// +usage=Most read request units allowed. At least 1, or -1 to remove the limit.
 				maxReadRequestUnits?: int & >=-1
-				// +usage=Most write request units allowed. -1 removes the limit.
+				// +usage=Most write request units allowed. At least 1, or -1 to remove the limit.
 				maxWriteRequestUnits?: int & >=-1
+				if maxReadRequestUnits != _|_ {
+					_validate: {
+						"maxReadRequestUnits must be at least 1, or -1 to remove the limit": true
+						if maxReadRequestUnits == 0 {
+							"maxReadRequestUnits must be at least 1, or -1 to remove the limit": false
+						}
+					}
+				}
+				if maxWriteRequestUnits != _|_ {
+					_validate: {
+						"maxWriteRequestUnits must be at least 1, or -1 to remove the limit": true
+						if maxWriteRequestUnits == 0 {
+							"maxWriteRequestUnits must be at least 1, or -1 to remove the limit": false
+						}
+					}
+				}
 			}
 			// +usage=Throughput the index is pre-warmed for.
 			warmThroughput?: {
@@ -178,7 +231,28 @@ template: {
 			// +usage=Key of the index. It starts with the table's HASH key.
 			keySchema!: list.MinItems(1) & [...#KeySchemaElement]
 			// +usage=Attributes copied into the index.
-			projection!: #Projection
+			projection!: {
+				// +usage=ALL copies every attribute, KEYS_ONLY only the keys, INCLUDE the keys plus nonKeyAttributes.
+				projectionType?: "ALL" | "KEYS_ONLY" | "INCLUDE"
+				// +usage=Extra attributes to copy into the index. Required with projectionType INCLUDE, not allowed otherwise.
+				nonKeyAttributes?: list.MinItems(1) & list.MaxItems(20) & [...string]
+				if projectionType != _|_ {
+					_validate: {
+						"nonKeyAttributes is required when projectionType is INCLUDE": true
+						if projectionType == "INCLUDE" && nonKeyAttributes == _|_ {
+							"nonKeyAttributes is required when projectionType is INCLUDE": false
+						}
+					}
+				}
+				if projectionType != _|_ && nonKeyAttributes != _|_ {
+					_validate: {
+						"nonKeyAttributes is only allowed when projectionType is INCLUDE": true
+						if projectionType != "INCLUDE" {
+							"nonKeyAttributes is only allowed when projectionType is INCLUDE": false
+						}
+					}
+				}
+			}
 		}]
 		// +usage=DynamoDB Streams settings.
 		streamSpecification?: {
@@ -217,7 +291,7 @@ template: {
 		// +usage=Storage class of the table.
 		tableClass?: "STANDARD" | "STANDARD_INFREQUENT_ACCESS"
 		// +usage=Resource-based IAM policy for the table, as a JSON document of at most 20 KB.
-		resourcePolicy?: string
+		resourcePolicy?: string & strings.MaxRunes(20480)
 		// +usage=AWS tags for the table.
 		tags?: list.MaxItems(50) & [...{
 			// +usage=Tag key.
@@ -227,17 +301,29 @@ template: {
 		}]
 		// +usage=What ACK does with the table in AWS when the component is deleted. ACK deletes it when unset.
 		deletionPolicy?: "delete" | "retain"
+		_validate: {
+			"provisionedThroughput is required when billingMode is PROVISIONED": true
+			if parameter.billingMode == "PROVISIONED" && parameter["provisionedThroughput"] == _|_ {
+				"provisionedThroughput is required when billingMode is PROVISIONED": false
+			}
+		}
+		_validate: {
+			"provisionedThroughput is not allowed when billingMode is PAY_PER_REQUEST": true
+			if parameter.billingMode == "PAY_PER_REQUEST" && parameter["provisionedThroughput"] != _|_ {
+				"provisionedThroughput is not allowed when billingMode is PAY_PER_REQUEST": false
+			}
+		}
+		_validate: {
+			"onDemandThroughput is not allowed when billingMode is PROVISIONED": true
+			if parameter.billingMode == "PROVISIONED" && parameter["onDemandThroughput"] != _|_ {
+				"onDemandThroughput is not allowed when billingMode is PROVISIONED": false
+			}
+		}
 	}
 	#KeySchemaElement: {
 		// +usage=Name of a key attribute. It must also appear in attributeDefinitions.
 		attributeName!: string & strings.MinRunes(1) & strings.MaxRunes(255)
 		// +usage=HASH for the partition key, RANGE for the sort key.
 		keyType!: "HASH" | "RANGE"
-	}
-	#Projection: {
-		// +usage=ALL copies every attribute, KEYS_ONLY only the keys, INCLUDE the keys plus nonKeyAttributes.
-		projectionType?: "ALL" | "KEYS_ONLY" | "INCLUDE"
-		// +usage=Extra attributes to copy into the index. Only with projectionType INCLUDE.
-		nonKeyAttributes?: list.MinItems(1) & list.MaxItems(20) & [...string]
 	}
 }

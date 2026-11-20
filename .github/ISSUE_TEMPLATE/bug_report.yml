@@ -1,0 +1,108 @@
+name: "🐛 Bug report"
+description: A skill, appendix, client template or script led the agent somewhere wrong
+title: "[Bug]"
+labels: ["type/bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report. Please search [existing issues](https://github.com/kubevela/skills/issues) first to avoid duplicates. If the problem is in what a `vela mcp` tool returned rather than in what the skill told the agent to do with it, file it in [kubevela/kubevela](https://github.com/kubevela/kubevela/issues/new/choose) instead.
+  - type: checkboxes
+    id: existing-search
+    attributes:
+      label: Is there an existing issue for this?
+      description: Please search to see if an issue already exists for the bug you encountered.
+      options:
+        - label: I have searched the existing issues
+          required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Which part of this repository does this affect? Pick the closest match.
+      options:
+        - kubevela-developer skill
+        - kubevela-platform-engineer skill
+        - kubevela-sre skill
+        - kubevela-defkit-author skill
+        - Server appendix or servers.yaml (grafana, datadog, kubernetes)
+        - Reference snapshots (references/)
+        - Client setup (clients/)
+        - Scripts or validator (scripts/, tests/)
+        - Evaluation suite (eval/)
+        - Other / not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: client
+    attributes:
+      label: Agent client
+      description: The client the skill ran in.
+      options:
+        - Claude Code
+        - Codex
+        - Cursor
+        - Gemini CLI
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Execution profile
+      description: Whether the agent had `vela mcp` loaded, fell back to the plain `vela` CLI, or worked without a cluster.
+      options:
+        - MCP (vela mcp loaded)
+        - CLI-assisted (vela CLI only)
+        - Offline authoring (no cluster)
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: kubevela-version
+    attributes:
+      label: KubeVela version
+      description: Output of `vela version`, covering both the CLI and the controller, or the `meta` block of a tool result. Leave empty when no cluster was involved (Offline authoring, scripts, validator).
+      placeholder: e.g. v1.12.0
+  - type: input
+    id: skills-version
+    attributes:
+      label: Skills version
+      description: The commit or tag of this repository the installed skills came from.
+      placeholder: e.g. main at 1a2b3c4
+    validations:
+      required: true
+  - type: textarea
+    id: describe-bug
+    attributes:
+      label: Describe the bug
+      description: What the skill told the agent to do, what the agent did, and why that is wrong. Quote the skill text and the line if you can.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: To reproduce
+      description: The prompt you gave the agent and the steps it took. Include the Application or definition YAML involved, with secret values and customer data removed.
+      placeholder: |
+        1. Asked the agent: ...
+        2. The skill step it followed: ...
+        3. It ran / called: ...
+        4. Observed: ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What the skill should have led the agent to do, including where it should have stopped and asked.
+  - type: textarea
+    id: transcript
+    attributes:
+      label: Transcript excerpt or tool output
+      description: The relevant part of the agent transcript or the tool results it saw. Redact secret values and customer data.
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.

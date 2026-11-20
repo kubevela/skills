@@ -1,0 +1,21 @@
+# Code owners for kubevela/skills, following https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# Branch protection on main requires a review from a code owner. Only accounts with
+# write access to this repository are honoured here, so this list is the kubevela
+# maintainers who have it.
+
+*                                  @barnettZQG @wonderflow @Somefive @wangyikewxgm @anoop2811 @briankane @jguionnet @roguepikachu @jerrinfrancis
+
+# Skills, their appendices, references and scripts
+kubevela-developer/                @anoop2811 @briankane @jguionnet @roguepikachu @jerrinfrancis @Somefive @wonderflow
+kubevela-platform-engineer/        @anoop2811 @briankane @jguionnet @roguepikachu @jerrinfrancis @Somefive @wonderflow
+kubevela-sre/                      @anoop2811 @briankane @jguionnet @roguepikachu @jerrinfrancis @Somefive @wonderflow
+kubevela-defkit-author/            @anoop2811 @briankane @jguionnet @roguepikachu @jerrinfrancis @Somefive @wangyikewxgm
+
+# Client setup, the evaluation suite, validator and tests
+clients/                           @anoop2811 @briankane @jguionnet @roguepikachu @jerrinfrancis
+eval/                              @anoop2811 @briankane @jguionnet @roguepikachu @jerrinfrancis
+scripts/                           @anoop2811 @briankane @jguionnet @roguepikachu @jerrinfrancis
+tests/                             @anoop2811 @briankane @jguionnet @roguepikachu @jerrinfrancis
+
+# Repository plumbing
+.github/                           @anoop2811 @briankane @jguionnet @roguepikachu @jerrinfrancis @wonderflow @Somefive

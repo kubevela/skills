@@ -9,6 +9,24 @@ service. It ends with a suite anyone can rerun and a record that says, for every
 whether it was proven. Copy `assets/aws-dynamodb/test/emulator` and change the service
 parts; do not write the setup again.
 
+## What is proven, and for which provider
+
+| Provider and provisioner | Status |
+|---|---|
+| AWS on ACK | Proven. `assets/aws-dynamodb` runs in CI against the AWS Emulator, and `testkit` has the helpers. Other AWS services follow the same steps; read the fidelity report for each. |
+| AWS on Crossplane | Not established. The rules below apply, but no module has been run: the endpoint is set in the `ProviderConfig`, and `testkit` has no check for it. |
+| GCP on Config Connector or Crossplane | Not established. No emulator image, no `testkit` helpers and no worked module exist here, and whether the controller can be pointed at an emulator has not been tried. |
+| Azure on Azure Service Operator or Crossplane | Not established, for the same reasons. |
+
+For a provider that is not proven, do not invent an emulator setup and call the result
+verified. Do the unit tests, the render and the server check as usual. Then tell the user
+that runtime verification has no established path for this provider and ask how they want
+it done: against a real test account or project they name, with an emulator they name, or
+not yet. Until a lever has been read back from a service, its row in the record is
+`untested`, and the blocker is "no established emulator path for <provider>". If the user
+picks an emulator and it works, the rules in the rest of this page still hold, and the
+result is worth a worked module of its own next to `assets/aws-dynamodb`.
+
 ## Where this runs, and where it never does
 
 - **Only a disposable cluster: k3d or kind, on a laptop or created inside a CI job.** The

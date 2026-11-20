@@ -113,7 +113,10 @@ deliverable carries either a named source or the user's answer.
      with `.Default(...)` so `vela show` tells the truth; where the platform wants a
      safer opinion than the provider's, say so in the usage string — and for a
      cloud-service definition, record the choice in its coverage doc.
-5. **Test in Go.** Write the tests with ginkgo and gomega — `Describe`/`It` specs using
+5. **Test in Go.** Every Go test in the module is a Ginkgo spec with Gomega matchers, never
+   a bare `testing` or testify test: `DescribeTable` for cases, `Eventually` for waits,
+   `DeferCleanup` for teardown, a `SpecContext` with a timeout for anything that can hang.
+   Write `Describe`/`It` specs using
    the matchers in defkit's `testing/matchers` package, the way vela-go-definitions does;
    table-driven entries live inside the specs. Cover defaults, parameter boundaries,
    invalid input that must be rejected, and the health and status expressions where the
@@ -133,8 +136,10 @@ deliverable carries either a named source or the user's answer.
      cloud: stop.
    - Read the emulator's fidelity report for the operations the definition calls, with
      `scripts/emulator-fidelity.py`, at the version the cluster runs.
-   - One spec per lever. For GCP use an emulator such as localgcp or the service's
-     official `gcloud` emulator, with the same rules.
+   - One spec per lever.
+   - This path is proven for AWS on ACK only. For GCP, Azure or a Crossplane provider,
+     `references/emulator-tests.md` says what carries over and what is not established;
+     do not present an untried emulator setup as verified.
 6. **Validate and generate.** Run `vela def validate-module <dir>`, then
    `vela def gen-module <dir> -o <out>`. A failure is a bug in the Go, not in the CUE; fix
    it at the source and regenerate. **A regeneration is a definition change even when no

@@ -13,19 +13,29 @@ parts; do not write the setup again.
 
 | Provider and provisioner | Status |
 |---|---|
-| AWS on ACK | Proven. `assets/aws-dynamodb` runs in CI against the AWS Emulator, and `testkit` has the helpers. Other AWS services follow the same steps; read the fidelity report for each. |
-| AWS on Crossplane | Not established. The rules below apply, but no module has been run: the endpoint is set in the `ProviderConfig`, and `testkit` has no check for it. |
+| AWS DynamoDB on ACK | Proven. `assets/aws-dynamodb` runs in CI against the AWS Emulator, and `testkit` has the helpers. |
+| Other AWS services on ACK | Not proven yet. The same helpers and steps are expected to apply, but no module has been run. Each service needs its own run, starting with the fidelity report for its operations. |
+| AWS on Crossplane | Not established. No module has been run: the endpoint is set in the `ProviderConfig`, and `testkit` has no check for it. |
 | GCP on Config Connector or Crossplane | Not established. No emulator image, no `testkit` helpers and no worked module exist here, and whether the controller can be pointed at an emulator has not been tried. |
 | Azure on Azure Service Operator or Crossplane | Not established, for the same reasons. |
 
-For a provider that is not proven, do not invent an emulator setup and call the result
-verified. Do the unit tests, the render and the server check as usual. Then tell the user
-that runtime verification has no established path for this provider and ask how they want
-it done: against a real test account or project they name, with an emulator they name, or
-not yet. Until a lever has been read back from a service, its row in the record is
-`untested`, and the blocker is "no established emulator path for <provider>". If the user
-picks an emulator and it works, the rules in the rest of this page still hold, and the
-result is worth a worked module of its own next to `assets/aws-dynamodb`.
+For a provider or provisioner that is not established, do not invent an emulator setup
+and call the result verified. Do the unit tests, the render and the server check as usual.
+Then tell the user that runtime verification has no established path here, and ask
+whether they have an emulator they want used on a disposable cluster, or whether runtime
+verification waits. Until a lever has been read back from a service, its row in the
+record is `untested`, and the blocker is "no established emulator path for <provider>".
+
+Running against a real cloud account is not one of the options this procedure offers.
+It needs a controller that manages real resources, which is exactly what the rules below
+keep this suite away from. If the user wants that, it is a separate setup that they own
+and authorize; nothing on this page, and neither the suite nor `testkit`, applies to it.
+
+If the user names an emulator and it works, three things on this page carry over
+unchanged: where the suite may run, the rules the specs follow, and the record. The
+setup does not: how the controller gets its endpoint, how to check it, and how to install
+it are specific to AWS on ACK, and have to be worked out and written down for the new
+provider. The result is worth a worked module of its own next to `assets/aws-dynamodb`.
 
 ## Where this runs, and where it never does
 
@@ -62,10 +72,13 @@ result is worth a worked module of its own next to `assets/aws-dynamodb`.
    the same check itself with `RequireACKOnEmulator`, so it holds without an agent too.
 3. **Install the controller for the emulator**, after the user agrees. The emulator
    goes first: an ACK controller calls STS when it starts, and without an emulator to
-   answer it never becomes ready. Apply the manifest of a
+   answer it never becomes ready. Look for a running one before deploying anything
+   (`kubectl -n aws-emulator get deployment,service aws-emulator`). If it is there, use
+   it as it is. If it is not, apply the manifest of the
    [kubevela/cloud-emulators release](https://github.com/kubevela/cloud-emulators/releases)
-   and wait for its rollout, then install the controller. Look the chart version up; do
-   not guess it. The keys are made up: the emulator ignores them.
+   whose version the suite pins, and wait for its rollout. Then install the controller.
+   Look the chart version up; do not guess it. The keys are made up: the emulator ignores
+   them.
 
    ```sh
    kubectl create namespace ack-system

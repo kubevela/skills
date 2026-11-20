@@ -153,9 +153,12 @@ var _ = Describe("dynamodb-table component", func() {
 			Entry("attributes to include with another projection type",
 				"nonKeyAttributes is only allowed when projectionType is INCLUDE",
 				`projectionType != "INCLUDE"`),
-			Entry("a request limit of zero",
+			Entry("a read request limit of zero",
 				"maxReadRequestUnits must be at least 1, or -1 to remove the limit",
 				`maxReadRequestUnits == 0`),
+			Entry("a write request limit of zero",
+				"maxWriteRequestUnits must be at least 1, or -1 to remove the limit",
+				`maxWriteRequestUnits == 0`),
 		)
 
 		It("carries the projection rules in both kinds of index", func() {

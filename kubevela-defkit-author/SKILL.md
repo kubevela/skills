@@ -114,7 +114,9 @@ deliverable carries either a named source or the user's answer.
      safer opinion than the provider's, say so in the usage string — and for a
      cloud-service definition, record the choice in its coverage doc.
 5. **Test in Go.** Every Go test in the module is a Ginkgo spec with Gomega matchers, never
-   a bare `testing` or testify test: `DescribeTable` for cases, `Eventually` for waits,
+   a `testing` or testify test. The one `testing` function a package has is the suite's
+   entry point, `func TestX(t *testing.T) { RegisterFailHandler(Fail); RunSpecs(t, ...) }`.
+   Use `DescribeTable` for cases, `Eventually` for waits,
    `DeferCleanup` for teardown, a `SpecContext` with a timeout for anything that can hang.
    Write `Describe`/`It` specs using
    the matchers in defkit's `testing/matchers` package, the way vela-go-definitions does;
@@ -139,7 +141,8 @@ deliverable carries either a named source or the user's answer.
    - Read the emulator's fidelity report for the operations the definition calls, with
      `scripts/emulator-fidelity.py`, at the version the cluster runs.
    - One spec per lever, or per group of levers that only make sense together.
-   - This path is proven for AWS on ACK only. For GCP, Azure or a Crossplane provider,
+   - This path is proven for DynamoDB on ACK only. For another AWS service, GCP, Azure
+     or a Crossplane provider,
      `references/emulator-tests.md` says what carries over and what is not established;
      do not present an untried emulator setup as verified.
 6. **Validate and generate.** Run `vela def validate-module <dir>`, then

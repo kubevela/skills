@@ -1,0 +1,24 @@
+# An on-demand table with request limits, the infrequent-access class and
+# Contributor Insights. The values are illustrative.
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: sample-events
+  namespace: team-a
+spec:
+  components:
+    - name: sample-events
+      type: dynamodb-table
+      properties:
+        attributeDefinitions:
+          - attributeName: eventId
+            attributeType: "S"
+        keySchema:
+          - attributeName: eventId
+            keyType: HASH
+        billingMode: PAY_PER_REQUEST
+        onDemandThroughput:
+          maxReadRequestUnits: 100
+          maxWriteRequestUnits: 50
+        tableClass: STANDARD_INFREQUENT_ACCESS
+        contributorInsights: ENABLED

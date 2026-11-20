@@ -19,9 +19,13 @@ jobs:
         run: python3 scripts/validate_skills.py
       - name: Consumer inventory tests
         run: bash tests/consumers/test.sh
+      - name: Coverage record check tests
+        run: bash tests/coverage/test.sh
+      - name: Emulator fidelity summary tests
+        run: bash tests/fidelity/test.sh
       - name: Shell syntax
         run: |
-          for script in kubevela-platform-engineer/scripts/definition-consumers.sh tests/consumers/test.sh tests/validator/test.sh scripts/commit-message-lint.sh; do
+          for script in kubevela-platform-engineer/scripts/definition-consumers.sh tests/consumers/test.sh tests/validator/test.sh tests/coverage/test.sh tests/fidelity/test.sh scripts/commit-message-lint.sh; do
             bash -n "$script"
           done
   commit-lint:

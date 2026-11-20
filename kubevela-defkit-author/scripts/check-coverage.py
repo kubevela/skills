@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+"""Check the runtime verification record of a cloud-service definition module.
+
+usage: check-coverage.py <docs/coverage.md> [--cue <generated definition.cue>]
+
+The record is the table under the "## Runtime verification" heading:
+
+    | Lever | Outcome | Evidence or reason |
+
+Every row must have exactly one of three outcomes, and the outcomes that are not
+a pass must say why:
+
+    verified end to end   the third cell names the API call that read it back
+    endpoint-limited      the third cell quotes the error or names the limitation
+    untested              the third cell names what blocks the test
+
+"Not exercised yet", "later" or "TODO" is not a reason: nothing blocks such a
+lever, so the fix is a test, not a table row. The line that starts with
+"Counts:" must agree with the table.
+
+With --cue, every top-level parameter of the generated definition must be named
+in the Lever column, so a parameter cannot ship without an outcome.
+
+Exits 0 when the record is complete, 1 with one line per problem otherwise.
+"""
+import argparse
+import re
+import sys
+
+OUTCOMES = ("verified end to end", "endpoint-limited", "untested")
+# What people write when nothing actually blocks the test.
+NOT_A_REASON = re.compile(
+    r"^\W*((not (yet )?(exercised|tested|run|done|covered)\b.*)|((not yet|todo|tbd|later|pending|n/?a|none|unknown)\W*)|)$",
+    re.IGNORECASE,
+)
+
+
+def cells(line):
+    return [c.strip() for c in line.strip().strip("|").split("|")]
+
+
+def runtime_rows(text):
+    """Rows of the first table under the Runtime verification heading."""
+    section = re.search(r"^##\s+Runtime verification\s*$(.*?)(?=^##\s|\Z)", text, re.MULTILINE | re.DOTALL | re.IGNORECASE)
+    if not section:
+        return None, ""
+    body = section.group(1)
+    rows, in_table = [], False
+    for line in body.splitlines():
+        if line.lstrip().startswith("|"):
+            in_table = True
+            row = cells(line)
+            if set("".join(row)) <= set("-: "):
+                continue
+            rows.append(row)
+        elif in_table:
+            break
+    return rows, body
+
+
+def top_level_parameters(cue):
+    """Names declared directly inside the `parameter: {` block of generated CUE."""
+    match = re.search(r"^(\s*)parameter:\s*\{\s*$", cue, re.MULTILINE)
+    if not match:
+        return []
+    indent = match.group(1)
+    names = []
+    for line in cue[match.end():].splitlines():
+        if line.startswith(indent + "}"):
+            break
+        field = re.match(r"^" + re.escape(indent) + r"\t([A-Za-z_][A-Za-z0-9_]*)[?!]?:", line)
+        if field:
+            names.append(field.group(1))
+    return names
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("coverage")
+    parser.add_argument("--cue")
+    args = parser.parse_args()
+
+    text = open(args.coverage, encoding="utf-8").read()
+    problems = []
+    rows, body = runtime_rows(text)
+    if rows is None:
+        print('FAIL no "## Runtime verification" section')
+        return 1
+    if len(rows) < 2:
+        print("FAIL the Runtime verification section has no table rows")
+        return 1
+
+    header = [h.lower() for h in rows[0]]
+    if len(header) < 3 or header[0] != "lever" or header[1] != "outcome":
+        problems.append('the table header must be "| Lever | Outcome | Evidence or reason |"')
+
+    counts = dict.fromkeys(OUTCOMES, 0)
+    levers = []
+    for row in rows[1:]:
+        lever = row[0] if row else ""
+        outcome = row[1].lower() if len(row) > 1 else ""
+        reason = row[2] if len(row) > 2 else ""
+        levers.append(lever)
+        if outcome not in OUTCOMES:
+            problems.append(f'"{lever}": outcome "{row[1] if len(row) > 1 else ""}" is not one of: {", ".join(OUTCOMES)}')
+            continue
+        counts[outcome] += 1
+        if NOT_A_REASON.match(reason):
+            what = {
+                "verified end to end": "name the API call that read it back",
+                "endpoint-limited": "quote the error or name the limitation",
+                "untested": "name what blocks the test, or write the test",
+            }[outcome]
+            problems.append(f'"{lever}": {outcome} without a reason ("{reason}"): {what}')
+
+    stated = re.search(
+        r"^Counts:\s*(\d+)\s+verified end to end,\s*(\d+)\s+endpoint-limited,\s*(\d+)\s+untested", body, re.MULTILINE | re.IGNORECASE
+    )
+    if not stated:
+        problems.append('no line "Counts: N verified end to end, N endpoint-limited, N untested"')
+    else:
+        for outcome, number in zip(OUTCOMES, stated.groups()):
+            if int(number) != counts[outcome]:
+                problems.append(f"Counts says {number} {outcome}, the table has {counts[outcome]}")
+
+    if args.cue:
+        named = " ".join(levers)
+        for parameter in top_level_parameters(open(args.cue, encoding="utf-8").read()):
+            if not re.search(r"(?<![A-Za-z0-9_])" + re.escape(parameter) + r"(?![A-Za-z0-9_])", named):
+                problems.append(f'parameter "{parameter}" has no row in the Runtime verification table')
+
+    for problem in problems:
+        print("FAIL " + problem)
+    if problems:
+        return 1
+    print("OK " + ", ".join(f"{counts[o]} {o}" for o in OUTCOMES))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

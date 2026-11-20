@@ -1,0 +1,14 @@
+# KubeVela definition module metadata. The version comes from git tags.
+apiVersion: core.oam.dev/v1beta1
+kind: DefinitionModule
+metadata:
+  name: aws-dynamodb
+spec:
+  description: Amazon DynamoDB tables through the AWS Controllers for Kubernetes (ACK) DynamoDB controller
+  maintainers:
+    - name: Anoop Gopalakrishnan
+      email: anoop2811@aol.in
+  minVelaVersion: v1.11.0
+  categories:
+    - aws
+    - cloud-resources

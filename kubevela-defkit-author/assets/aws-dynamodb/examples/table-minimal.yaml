@@ -1,0 +1,18 @@
+# The smallest table: a partition key and on-demand billing.
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: sample-sessions
+  namespace: team-a
+spec:
+  components:
+    - name: sample-sessions
+      type: dynamodb-table
+      properties:
+        attributeDefinitions:
+          - attributeName: sessionId
+            attributeType: "S"
+        keySchema:
+          - attributeName: sessionId
+            keyType: HASH
+        billingMode: PAY_PER_REQUEST

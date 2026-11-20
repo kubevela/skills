@@ -3,7 +3,7 @@ name: kubevela-defkit-author
 description: Author KubeVela definitions in Go with defkit by default, generate and check them with the defkit module commands, render a sample Application, have the API server validate the rendered objects, and deliver by pull request. Use when the user wants a new component, trait, policy or workflow step, including one that provisions a cloud service such as S3, DynamoDB or Aurora on AWS, or GCS, Pub/Sub or Cloud SQL on GCP, or wants to port an existing CUE definition to Go. Write CUE X-Definitions by hand only when the user asks for CUE.
 license: Apache-2.0
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
   kubevela: ">=1.11"
   kep: design/vela-cli/kep-vela-mcp.md
 ---
@@ -118,22 +118,23 @@ deliverable carries either a named source or the user's answer.
    table-driven entries live inside the specs. Cover defaults, parameter boundaries,
    invalid input that must be rejected, and the health and status expressions where the
    definition declares them. Run `go test ./...`. Fix failures before generating.
-   An integration test that needs a live cloud API manages its own emulator: install it
-   in `BeforeSuite` into a namespace the test owns, point the controller or client at
-   that endpoint, and tear everything down in `AfterSuite` so nothing survives the run,
-   pass or fail. For AWS, use the official AWS Emulator (aws/aws-emulator): one instance
-   per suite, each with its own port and in-memory state, started with `--auth off` so
-   test credentials never matter. It serves HTTPS only, with a certificate it regenerates
-   at every start — either export its `ca.pem` through `AWS_CA_BUNDLE`, or front it with
-   a TLS-stripping sidecar (socat `TCP-LISTEN:<port>,fork,reuseaddr` →
-   `OPENSSL:127.0.0.1:9297,verify=0`) and give ACK controllers a plain-HTTP
-   `endpoint_url`, which also keeps the usual `allow_unsafe_aws_endpoint_urls` values
-   working unchanged. Before exercising a lever, check the emulator's fidelity report
-   (`scores.json.gz` on the aws/aws-emulator release the running emulator is pinned to —
-   not merely the latest) for the APIs the definition calls: a lever the report scores as failing is classified endpoint-limited up front in
-   docs/coverage.md, instead of being discovered at runtime. For GCP use an emulator such
-   as localgcp or the service's official `gcloud` emulator. Never depend on an emulator
-   that happens to be on the cluster.
+   A cloud-service definition also gets a runtime suite: Applications applied through
+   KubeVela and the provisioner to an emulator, and every lever read back with the
+   service's own API. Follow `references/emulator-tests.md` and start from the suite in
+   `assets/aws-dynamodb/test/emulator`. The rules that are not negotiable:
+   - It runs only on a disposable k3d or kind cluster, local or created in CI. Never
+     point a controller that manages real cloud resources at an emulator, and never
+     change the endpoint of an installed controller.
+   - One emulator per cluster, shared: use the one that is running, deploy the pinned
+     `ghcr.io/kubevela/aws-emulator` release only when there is none. A controller has
+     one endpoint. Runs stay apart by namespace and name prefix.
+   - Before the first spec, `get_platform_info` must show the controller's
+     `endpointOverride` is the emulator. A controller without it talks to the real
+     cloud: stop.
+   - Read the emulator's fidelity report for the operations the definition calls, with
+     `scripts/emulator-fidelity.py`, at the version the cluster runs.
+   - One spec per lever. For GCP use an emulator such as localgcp or the service's
+     official `gcloud` emulator, with the same rules.
 6. **Validate and generate.** Run `vela def validate-module <dir>`, then
    `vela def gen-module <dir> -o <out>`. A failure is a bug in the Go, not in the CUE; fix
    it at the source and regenerate. **A regeneration is a definition change even when no
@@ -282,6 +283,9 @@ apply fails.
     Connector, `gcloud container clusters update <cluster> --update-addons ConfigConnector=ENABLED`
     on GKE, or the configconnector-operator bundle pinned to the looked-up release
     elsewhere.
+  On a disposable test cluster the install points the controller at the emulator from
+  the start; the values are in `references/emulator-tests.md`. After any install, wait
+  for the rollout and report an image pull or start failure instead of going on.
   Either way, record the outcome: a parameter left out this way appears in the coverage
   summary as the gap kind "not installed", naming the controller or package that would
   provide it, and the decision is written into the module's docs per "Coverage summary
@@ -367,15 +371,17 @@ need an upstream controller release (the "not in CRD" rows).
 
 The table and the decisions behind it also live in the module, not only in chat: write
 them to the module's `README.md`, or to a docs file such as `docs/coverage.md` that the
-README links to. That doc also carries a **runtime verification** section recording each
-lever's outcome as exactly one of: *verified end to end* (exercised and read back),
-*applied but the endpoint cannot echo or support it* (name the limitation with the error
-as evidence), or *untested* with the reason. "Every parameter exposed" and "every lever
-working" are different claims; the doc must show which one each row has earned, and the
-split appears in the delivery message too: the coverage summary's closing sentence
-states the counts per state — verified end to end, endpoint-limited, untested — and
-names the docs file holding the per-lever record, so a delivery can never read as
-"every lever working" when it is not. Each gap row carries its why — who chose to leave a parameter out and
+README links to. That doc also carries a **Runtime verification** section, in the table
+format `references/emulator-tests.md` defines, with one row per parameter and exactly one
+of three outcomes: *verified end to end* (exercised and read back, naming the API call),
+*endpoint-limited* (the endpoint cannot support it, with the error as evidence), or
+*untested* with what blocks the test. "Not exercised yet" is not a reason: when nothing
+blocks a lever, write its spec. Run `scripts/check-coverage.py docs/coverage.md --cue
+<generated cue>` and fix what it reports before delivering. "Every parameter exposed"
+and "every lever working" are different claims; the doc must show which one each row has
+earned, and the split appears in the delivery message too: the coverage summary's closing
+sentence states the counts per state and names the docs file holding the per-lever
+record, so a delivery can never read as "every lever working" when it is not. Each gap row carries its why — who chose to leave a parameter out and
 when, which controller a "not installed" row waits on, which upstream release a "not in
 CRD" row needs — so a developer reading the module a month later learns why a parameter
 or API configuration is not available without excavating the conversation.
@@ -447,8 +453,12 @@ cluster. It only means external CUE packages were not loaded.
   pattern, and the module layout, abridged from vela-go-definitions at a pinned commit,
   with an index of which example to read for which kind of definition.
 - `references/pitfalls.md`: mistakes seen in review and how to avoid them.
-
-Still missing: a runnable minimal module in this repository with tests, sample
-Applications and expected renders, so an author can copy a working baseline rather than
-read one. Until it exists, clone vela-go-definitions at the pinned commit and start from
-the nearest example there.
+- `references/emulator-tests.md`: the runtime suite against an emulator and the record it
+  produces.
+- `assets/aws-dynamodb`: a complete module to copy from. A DynamoDB table on ACK with
+  unit tests, sample Applications, generated CUE, the emulator suite and its coverage
+  record. Its README says how to run each part.
+- `scripts/emulator-fidelity.py`: what the emulator's fidelity report says about the
+  operations a definition calls.
+- `scripts/check-coverage.py`: checks that every parameter has a runtime outcome with
+  evidence or a blocker.

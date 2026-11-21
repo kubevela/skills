@@ -1,5 +1,22 @@
 # Contributing
 
+Thanks for your interest in the KubeVela skills. This repository is part of the KubeVela
+project and follows its contribution process; this page covers what is specific to
+skills and links to the project guide for everything else.
+
+## Code of Conduct
+
+KubeVela follows the CNCF Code of Conduct. By participating, you agree to uphold it.
+See [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
+
+## Before you start
+
+Pick an open issue or [open a new one](https://github.com/kubevela/skills/issues/new/choose)
+describing the change. Unless you are a maintainer, comment on the issue and get it
+assigned to you before raising a pull request; a pull request without an assigned issue
+may not be picked up. Bugs in `vela mcp` or `vela-core` themselves belong in
+[kubevela/kubevela](https://github.com/kubevela/kubevela/issues/new/choose).
+
 ## What belongs here
 
 - Skills that teach an agent how to operate KubeVela: the sequence, the stopping points,
@@ -64,3 +81,45 @@ when layer 1 of that suite passes against it.
 Plain English, short sentences, no marketing words. Numbered steps with explicit stopping
 points. State what the agent must never do. The reader is an agent that will follow the
 text literally and a maintainer who will have to debug what it did.
+
+## Commit messages
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/) with a
+lowercase type, `<type>(<scope>): <subject>`. The scope is optional; when present it is
+the skill directory or the area touched:
+
+```
+feat(kubevela-sre): read endpoint provenance before diagnosing a provisioner
+fix(kubevela-defkit-author): use the pre-apply hook key spelling
+docs(clients): add the Gemini CLI skills directory
+```
+
+`<type>` is one of feat, fix, chore, docs, refactor, test, ci, build or perf. The subject
+has no trailing period. A body, if present, has at most six bullets of at most 25 words
+each, and any claim that something was verified cites the command and what it printed.
+`scripts/commit-message-lint.sh` enforces all of this on every commit of a pull request in
+CI; run it locally on your last commit with `./scripts/commit-message-lint.sh HEAD`. Pull
+requests are squash-merged, so the pull request title becomes the commit subject and
+follows the same format.
+
+This differs from kubevela/kubevela, where the type is capitalised (`Feat(cli): ...`).
+
+## Sign your commits (DCO)
+
+Every commit must carry a `Signed-off-by` line certifying you wrote the change and can
+contribute it under the project license. Add it with `-s`:
+
+```bash
+git commit -s -m "docs(kubevela-developer): state when to stop and ask"
+```
+
+Without it the DCO check fails and the pull request cannot merge. For the full
+explanation and how to fix commits you already pushed, see
+[Sign Your Commits (DCO)](https://kubevela.io/docs/contributor/code-contribute#sign-your-commits-dco).
+
+## More
+
+- **Project contributor guide**: [kubevela.io/docs/contributor/overview](https://kubevela.io/docs/contributor/overview).
+- **Governance**: [GOVERNANCE.md](https://github.com/kubevela/kubevela/blob/master/GOVERNANCE.md) in kubevela/kubevela explains roles, responsibilities, and how decisions get made.
+- **Security**: do not open a public issue for a vulnerability. Follow [SECURITY.md](./SECURITY.md).
+- **Communication**: Slack, community meetings, and how to get involved are covered in [COMMUNITY.md](https://github.com/kubevela/kubevela/blob/master/COMMUNITY.md).

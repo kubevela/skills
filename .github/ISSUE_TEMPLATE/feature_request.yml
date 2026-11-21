@@ -1,0 +1,50 @@
+name: "🚀 Feature request"
+description: Propose a new skill, a new server appendix or a new client
+title: "[Feature]"
+labels: ["type/feature"]
+body:
+  - type: checkboxes
+    id: existing-search
+    attributes:
+      label: Is there an existing issue for this?
+      description: Please search to see if an issue already exists for the feature you're requesting.
+      options:
+        - label: I have searched the existing issues
+          required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of addition is this?
+      options:
+        - A new skill (a new role or procedure)
+        - A new server appendix (observability, Kubernetes or other MCP server)
+        - A new client setup (clients/)
+        - A new script the skills can rely on
+        - A new layer or case in the evaluation suite
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem or limitation does this address?
+      description: "What an agent cannot do today, or does unsafely, when operating KubeVela. Ex. When asked to [...] the agent has no procedure for [...]"
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: The procedure in outline, with its stopping points, the servers it needs, and what the CLI fallback would lose. Say whether `vela mcp` needs a new tool for it; if so, that part is a kubevela/kubevela issue.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Whether an existing skill could cover this with a change instead, and why not.
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context, transcripts or references here.

@@ -1,0 +1,45 @@
+name: "✨ Enhancement request"
+description: Improve an existing skill, appendix, client template or script
+title: "[Enhancement]"
+labels: ["type/enhancement"]
+body:
+  - type: checkboxes
+    id: existing-search
+    attributes:
+      label: Is there an existing issue for this?
+      description: Please search to see if an issue already exists for the enhancement you're requesting.
+      options:
+        - label: I have searched the existing issues
+          required: true
+  - type: input
+    id: affected
+    attributes:
+      label: Affected skill, appendix or file
+      description: Name the skill directory, appendix or script this enhancement targets, and the step or section if you can.
+      placeholder: e.g. kubevela-sre/SKILL.md step 4, kubevela-sre/servers/grafana.md, clients/cursor.md
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is the current limitation or pain point?
+      description: Where the procedure is unclear, stops too early or too late, misses a guarantee, or sends the agent to the wrong server.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the improvement you'd like
+      description: The changed step or wording, and what the agent would do differently at that point.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: A clear and concise description of any alternative solutions you've considered.
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context, transcripts or references here.

@@ -255,24 +255,27 @@ apply fails.
   Expose one optional parameter naming the Secret a workload will read, document its
   keys, and fill it by one of three shapes, each with its own lifecycle:
   - **KubeVela's own workflow, provisioner-neutral.** A `read-object` step reads the
-    resource's status and an `export2secret` step writes the keys, in a workflow the
-    module ships. It works for every provisioner, Config Connector included, and it is
-    the default choice.
+    reconciled resource, `status` and `spec` both, since a provisioner may late-initialize
+    a connection field into `spec` (ACK puts an RDS port in `spec.port`), and an
+    `export2secret` step writes the keys, in a workflow the module ships. It works for
+    every provisioner, Config Connector included, and it is the default choice whenever
+    the details are on the object.
   - **A per-key exporter** copies one field into a key of a Secret that must already
     exist, so it may target the Secret that holds the input credential. ACK's
-    `FieldExport` is this shape, but ACK deprecated it in 2025 and newer controllers ship
-    it disabled, with KRO named as the successor: use it only when the pinned controller
+    `FieldExport` is this shape, but ACK's deprecation policy
+    (https://aws-controllers-k8s.github.io/community/docs/community/deprecation-policy/)
+    lists it as deprecated with KRO as its successor, and controllers released from
+    late 2025 ship it disabled by default: use it only when the pinned controller
     version serves it, and say so in the coverage doc.
   - **A connection-Secret writer** creates or overwrites a whole Secret of its own:
     Crossplane `writeConnectionSecretToRef` and `publishConnectionDetailsTo`, the
     Terraform addon's `Configuration.writeConnectionSecretToRef`. Keep it separate from
     the Secret that holds the input credential; the writer owns its content.
-  Two facts hold everywhere: a value the provisioner fills in after creation lives where
-  the provisioner puts it, which can be `spec` (ACK late-initializes an RDS port into
-  `spec.port`), so read the real object after a reconcile; and an export of an unset
-  field never converges, so gate optional fields on the parameter that makes the source
-  exist. Record the mechanism and the keys in the module README, and let the coverage
-  doc carry the parameter as a platform lever.
+  Two facts hold everywhere: read the real object after a reconcile to learn where each
+  value lands, never assume; and an export of an unset field never converges, so gate
+  optional fields on the parameter that makes the source exist. Record the mechanism and
+  the keys in the module README, and let the coverage doc carry the parameter as a
+  platform lever.
 - **Health and status.** Use the rule `resource.health` gives. An ACK resource is ready
   when its `ACK.ResourceSynced` condition is `True` and its `ACK.Terminal` condition is
   absent or not `True` — Terminal halts reconciliation while Synced keeps its last

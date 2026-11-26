@@ -64,3 +64,11 @@ Each of these has been seen in review or follows directly from how defkit works.
 17. **Installing the controller before the emulator.** An ACK controller calls STS when
     it starts. Pointed at an emulator that is not there yet, it restarts until one
     answers. On a test cluster the emulator is deployed first.
+18. **A health rule that reads only the primary output.** A component that emits a
+    cluster and its instances, a pool and its nodes, or any container plus members, is
+    reported healthy as soon as the container is, minutes before the members and the
+    address a consumer needs exist. KubeVela then releases every component that
+    `dependsOn` it. Emulators hide this because they complete everything at once; a real
+    cloud does not. Apply the per-resource rule to every output with
+    `Health().Every(OutputsWithPrefix(...))`, and remember the in-process renderer does
+    not evaluate `Every`: assert the CUE from `GetHealthPolicy()`.

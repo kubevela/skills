@@ -86,8 +86,14 @@ examples file shows this pattern.
 ## Health and status
 
 - Builders: `defkit.Health()` with `.IntField(name, path, default)`, `.HealthyWhen(exprs...)`,
-  `.Build()`; presets `DeploymentHealth()`, `DaemonSetHealth()`, `JobHealth()`,
-  `CronJobHealth()`; status presets `DeploymentStatus()`, `DaemonSetStatus()`.
+  `.HealthyWhenExpr(expr)`, `.Build()`; presets `DeploymentHealth()`, `DaemonSetHealth()`,
+  `JobHealth()`, `CronJobHealth()`; status presets `DeploymentStatus()`, `DaemonSetStatus()`.
+- Health expressions on the primary output: `.Condition(type).IsTrue()`, `.Field(path)`,
+  `.Exists(path)`, `.Phase(...)`, combined with `.And(...)`, `.Or(...)`, `.Not(...)`.
+- Health over auxiliary outputs: `.Every(defkit.OutputsWithPrefix(prefix), func(o *HealthScope) HealthExpression)`
+  applies a rule to each output whose name starts with `prefix`, with `.AllowEmpty()`
+  when there may be none; `.At(ref)` scopes a rule to one named output. The in-process
+  renderer does not evaluate `Every`; assert the generated CUE from `GetHealthPolicy()`.
 - Expressions: `defkit.StatusEq(a, b)`, `defkit.StatusOr(...)`, `defkit.HealthPolicy(expr)`,
   `defkit.CustomStatusExpr(expr)`. Pass the built string to `.HealthPolicy()` or
   `.CustomStatus()` on the definition.

@@ -252,24 +252,27 @@ apply fails.
 - **Connection details out.** A provisioned service exists to be used, so a definition
   for anything a workload connects to also hands out what the connection needs:
   endpoint, port, database or resource name, principal, and where the credential lives.
-  Expose one optional parameter that names an existing Secret in the Application's
-  namespace, document the keys it receives, and fill it with the provisioner's own
-  mechanism: on ACK a `services.k8s.aws/v1alpha1` `FieldExport` per key, from the
-  resource's field into `to: {kind: secret, name: <parameter>, key: <key>}`; on
-  Crossplane `spec.writeConnectionSecretToRef` or `spec.publishConnectionDetailsTo`; on
-  the Terraform addon the same `writeConnectionSecretToRef` on its `Configuration`; on
-  Config Connector the status fields the resource publishes, carried by a workflow step
-  or a Secret the resource itself writes. A provisioner not named here has one of these
-  two shapes, a per-key exporter or a connection Secret the resource writes; find which
-  before writing the parameter. Pointing the parameter at the Secret that
-  already holds the password gives the workload one Secret with everything. Three facts
-  hold on every provisioner: the target Secret must exist before the export runs, because
-  exporters do not create it; a value the provisioner fills in after creation lives where
+  Expose one optional parameter naming the Secret a workload will read, document its
+  keys, and fill it by one of three shapes, each with its own lifecycle:
+  - **KubeVela's own workflow, provisioner-neutral.** A `read-object` step reads the
+    resource's status and an `export2secret` step writes the keys, in a workflow the
+    module ships. It works for every provisioner, Config Connector included, and it is
+    the default choice.
+  - **A per-key exporter** copies one field into a key of a Secret that must already
+    exist, so it may target the Secret that holds the input credential. ACK's
+    `FieldExport` is this shape, but ACK deprecated it in 2025 and newer controllers ship
+    it disabled, with KRO named as the successor: use it only when the pinned controller
+    version serves it, and say so in the coverage doc.
+  - **A connection-Secret writer** creates or overwrites a whole Secret of its own:
+    Crossplane `writeConnectionSecretToRef` and `publishConnectionDetailsTo`, the
+    Terraform addon's `Configuration.writeConnectionSecretToRef`. Keep it separate from
+    the Secret that holds the input credential; the writer owns its content.
+  Two facts hold everywhere: a value the provisioner fills in after creation lives where
   the provisioner puts it, which can be `spec` (ACK late-initializes an RDS port into
-  `spec.port`, and `status` has no port), so read the real object after a reconcile rather
-  than assume; and an export whose source field is unset never converges, so gate exports
-  of optional fields on the parameter that makes the source exist. Record the keys in the
-  module README and let the coverage doc carry the parameter as a platform lever.
+  `spec.port`), so read the real object after a reconcile; and an export of an unset
+  field never converges, so gate optional fields on the parameter that makes the source
+  exist. Record the mechanism and the keys in the module README, and let the coverage
+  doc carry the parameter as a platform lever.
 - **Health and status.** Use the rule `resource.health` gives. An ACK resource is ready
   when its `ACK.ResourceSynced` condition is `True` and its `ACK.Terminal` condition is
   absent or not `True` — Terminal halts reconciliation while Synced keeps its last

@@ -90,10 +90,13 @@ examples file shows this pattern.
   `JobHealth()`, `CronJobHealth()`; status presets `DeploymentStatus()`, `DaemonSetStatus()`.
 - Health expressions on the primary output: `.Condition(type).IsTrue()`, `.Field(path)`,
   `.Exists(path)`, `.Phase(...)`, combined with `.And(...)`, `.Or(...)`, `.Not(...)`.
-- Health over auxiliary outputs: `.Every(defkit.OutputsWithPrefix(prefix), func(o *HealthScope) HealthExpression)`
+- Health over auxiliary outputs: `.Every(defkit.OutputsWithPrefix(prefix), func(o *defkit.HealthScope) defkit.HealthExpression)`
   applies a rule to each output whose name starts with `prefix`, with `.AllowEmpty()`
   when there may be none; `.At(ref)` scopes a rule to one named output. The in-process
   renderer does not evaluate `Every`; assert the generated CUE from `GetHealthPolicy()`.
+  Every name in this section was confirmed with `go doc` on 2026-11-25 at kubevela
+  `v1.12.0-alpha.1.0.20261117213226-d1dda0425c82`, the version `assets/aws-dynamodb`
+  pins; the rest of this map is the v1.11.0 snapshot named at the top.
 - Expressions: `defkit.StatusEq(a, b)`, `defkit.StatusOr(...)`, `defkit.HealthPolicy(expr)`,
   `defkit.CustomStatusExpr(expr)`. Pass the built string to `.HealthPolicy()` or
   `.CustomStatus()` on the definition.

@@ -269,10 +269,12 @@ apply fails.
   before its nodes, a topic before its subscriptions. The thing a consumer needs, an
   address, a DNS name, an ID, usually arrives with the members, and emulators hide the
   gap because they complete everything at once (`references/pitfalls.md`, item 18). In
-  defkit, combine the primary rule with
-  `defkit.Health().Every(defkit.OutputsWithPrefix("instance-"), func(o *defkit.HealthScope) ...)`
-  applying the same per-resource rule to each output, with `.AllowEmpty()` when the
-  member count can be zero. Where "usable" is knowable, add a field rule as well:
+  defkit, keep the primary rule and `And` it with one
+  `defkit.Health().Every(defkit.OutputsWithPrefix(prefix), ...)` per name prefix the
+  template emits (`instance-`, `subnet-`), or `defkit.Health().At(ref)` for one named
+  output, each applying the per-resource rule, with `.AllowEmpty()` where the count can
+  be zero; `Every` judges only the outputs it selects. Where "usable" is knowable, add a
+  field rule as well:
   endpoint present, port set, member count reached. Conditions mirror the provider's state
   machine, not a client's ability to connect.
 - **Several resources.** Aurora needs a subnet group, a cluster and at least one instance.

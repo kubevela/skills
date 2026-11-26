@@ -69,6 +69,7 @@ Each of these has been seen in review or follows directly from how defkit works.
     reported healthy as soon as the container is, minutes before the members and the
     address a consumer needs exist. KubeVela then releases every component that
     `dependsOn` it. Emulators hide this because they complete everything at once; a real
-    cloud does not. Apply the per-resource rule to every output with
-    `Health().Every(OutputsWithPrefix(...))`, and remember the in-process renderer does
-    not evaluate `Every`: assert the CUE from `GetHealthPolicy()`.
+    cloud does not. Keep the primary rule, including any endpoint-present check, and
+    `And` it with `Health().Every(OutputsWithPrefix(...))` per name prefix or `.At(ref)`
+    per named output; `Every` judges only the outputs it selects. The in-process
+    renderer does not evaluate `Every`: assert the CUE from `GetHealthPolicy()`.

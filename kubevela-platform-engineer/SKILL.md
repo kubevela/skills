@@ -125,20 +125,26 @@ CUE.
 - Enabling, upgrading or disabling an addon, and joining or detaching a cluster, are
   administrative actions that stay in the CLI. Give the exact command and what it will
   do, and let the user run it.
-- **A provisioner instance is one endpoint and one identity.** An ACK controller
-  Deployment, a Crossplane `ProviderConfig`, a Config Connector context, the Terraform
-  controller's `Provider` object, and whatever a provisioner added later uses for the
-  same purpose: each points at one API endpoint with one credential, and every resource
-  that references it is reconciled against that endpoint. Changing where one points changes what every
-  resource it already holds will do: a controller re-pointed from an emulator to a real
-  account creates every demo resource it holds for real, and one re-pointed between
-  accounts starts creating in the new one and leaves the old resources orphaned. Before
-  giving the command to re-point, re-credential or upgrade one, inventory what it owns
-  (`kubectl get <kinds the controller serves> -A`, the resources naming the
-  `ProviderConfig`, the namespaces under the context) and say what will happen to each.
-  Two backends, an emulator and a real account or two accounts, need two instances, kept
-  apart by cluster, by namespace scope, or by a watch selector on the resources, and the
-  delivery names which mechanism was used.
+- **A provisioner instance is one endpoint and one identity, in the unit its family
+  defines.** A Crossplane `ProviderConfig`, a Config Connector context, the Terraform
+  controller's `Provider` object, an ACK controller Deployment, and whatever a provisioner
+  added later uses for the same purpose: each points at one API endpoint with one
+  credential, and every resource that references it, explicitly or by default, is
+  reconciled there. The unit is not always the controller: a Crossplane resource without
+  `providerConfigRef` uses the implicit `default` `ClusterProviderConfig`, and an ACK
+  controller can assume a different role per namespace through its account-mapping
+  annotations and role map, so one Deployment may serve several accounts. Changing where
+  an instance points changes what every resource it already holds will do: a controller
+  re-pointed from an emulator to a real account creates every demo resource it holds for
+  real, and one re-pointed between accounts starts creating in the new one and leaves
+  the old resources orphaned. Before giving the command to re-point, re-credential or
+  upgrade one, inventory what it owns and say what will happen to each: the kinds the
+  controller serves across namespaces, the resources naming the `ProviderConfig` plus
+  those that fall to the default, the namespaces under the context, and for ACK the
+  per-namespace account mappings and any role selectors. Two backends need two
+  identities in that unit: a second `ProviderConfig` named explicitly, a second
+  controller kept apart by cluster, namespace scope or a watch selector, or a second
+  account mapping; the delivery names which.
 - Human approval gates stay with humans. Never call `resume_workflow`, `suspend_workflow`
   or `terminate_workflow`. This rule is identical in every KubeVela skill.
 

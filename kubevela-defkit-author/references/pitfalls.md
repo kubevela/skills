@@ -70,6 +70,7 @@ Each of these has been seen in review or follows directly from how defkit works.
     address a consumer needs exist. KubeVela then releases every component that
     `dependsOn` it. Emulators hide this because they complete everything at once; a real
     cloud does not. Keep the primary rule, including any endpoint-present check, and
-    `And` it with `Health().Every(OutputsWithPrefix(...))` per name prefix or `.At(ref)`
+    `And` it with `defkit.Health().Every(defkit.OutputsWithPrefix(...)).AllowEmpty()` per
+    name prefix, `AllowEmpty` because a prefix may match no output yet, or `.At(ref)`
     per named output; `Every` judges only the outputs it selects. The in-process
     renderer does not evaluate `Every`: assert the CUE from `GetHealthPolicy()`.

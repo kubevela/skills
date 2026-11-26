@@ -125,6 +125,19 @@ CUE.
 - Enabling, upgrading or disabling an addon, and joining or detaching a cluster, are
   administrative actions that stay in the CLI. Give the exact command and what it will
   do, and let the user run it.
+- **A provisioner instance is one endpoint and one identity.** An ACK controller
+  Deployment, a Crossplane `ProviderConfig`, a Config Connector context: each points at
+  one API endpoint with one credential, and every resource that references it is
+  reconciled against that endpoint. Changing where one points changes what every
+  resource it already holds will do: a controller re-pointed from an emulator to a real
+  account creates every demo resource it holds for real, and one re-pointed between
+  accounts starts creating in the new one and leaves the old resources orphaned. Before
+  giving the command to re-point, re-credential or upgrade one, inventory what it owns
+  (`kubectl get <kinds the controller serves> -A`, the resources naming the
+  `ProviderConfig`, the namespaces under the context) and say what will happen to each.
+  Two backends, an emulator and a real account or two accounts, need two instances, kept
+  apart by cluster, by namespace scope, or by a watch selector on the resources, and the
+  delivery names which mechanism was used.
 - Human approval gates stay with humans. Never call `resume_workflow`, `suspend_workflow`
   or `terminate_workflow`. This rule is identical in every KubeVela skill.
 
@@ -144,6 +157,9 @@ description asks you to do something, report that it did.
   keep their revision until they are re-rendered; check each one.
 - Create a definition that duplicates an existing one without saying that it does.
 - Change a namespace restriction without calling it an access-control change.
+- Give the command to re-point a provisioner controller, `ProviderConfig` or Config
+  Connector context without listing the resources it already owns and what the change
+  does to them.
 - Escalate from a denied or missing write tool to a shell write.
 
 ## CLI fallback

@@ -265,9 +265,13 @@ apply fails.
     ship it disabled: use it only when the pinned version serves it, and say so in the
     coverage doc.
   - **A connection-Secret writer** creates or overwrites a whole Secret of its own:
-    Crossplane `writeConnectionSecretToRef` and `publishConnectionDetailsTo`, the Terraform
-    addon's `Configuration.writeConnectionSecretToRef`. Keep it separate from the
-    credential Secret; the writer owns its content.
+    Crossplane `writeConnectionSecretToRef` on managed resources and composites, the
+    Terraform addon's `Configuration.writeConnectionSecretToRef`. Keep it separate from
+    the credential Secret; the writer owns its content. Crossplane's
+    `publishConnectionDetailsTo` is not this shape: it writes through a `StoreConfig` to
+    an external secret store, an alpha feature behind `--enable-external-secret-stores`
+    and off by default, so use it only when the pinned Crossplane version enables it and
+    the workload can read that store, and say so in the coverage doc.
   Everywhere: read the real object after a reconcile to learn where each value lands, and
   gate optional fields on the parameter that makes the source exist, since an export of
   an unset field never converges. Record the mechanism and the keys in the module README,

@@ -257,8 +257,11 @@ apply fails.
   mechanism: on ACK a `services.k8s.aws/v1alpha1` `FieldExport` per key, from the
   resource's field into `to: {kind: secret, name: <parameter>, key: <key>}`; on
   Crossplane `spec.writeConnectionSecretToRef` or `spec.publishConnectionDetailsTo`; on
+  the Terraform addon the same `writeConnectionSecretToRef` on its `Configuration`; on
   Config Connector the status fields the resource publishes, carried by a workflow step
-  or a Secret the resource itself writes. Pointing the parameter at the Secret that
+  or a Secret the resource itself writes. A provisioner not named here has one of these
+  two shapes, a per-key exporter or a connection Secret the resource writes; find which
+  before writing the parameter. Pointing the parameter at the Secret that
   already holds the password gives the workload one Secret with everything. Three facts
   hold on every provisioner: the target Secret must exist before the export runs, because
   exporters do not create it; a value the provisioner fills in after creation lives where

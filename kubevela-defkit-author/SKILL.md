@@ -314,8 +314,9 @@ apply fails.
   `defkit.Register` only registers the definition with the generation tooling and runs
   during `go test` and codegen on machines that must not touch a cluster. Ship them in
   the module's `module.yaml` `hooks.pre-apply` (run by `vela def apply-module`, which can
-  apply manifests and wait for readiness) when the module should be self-contained, else
-  in the platform's addon or GitOps layer. Never emit a shared singleton from a component
+  apply manifests and wait for readiness) when the module should be self-contained, or in
+  the platform's addon or GitOps layer when the object is shared, even by a self-contained
+  module. Never emit a shared singleton from a component
   template: two components owning one `ProviderConfig` fight over it, and deleting the
   first Application garbage-collects it from under the rest; an object genuinely shared
   across Applications needs the `shared-resource` policy and one named owner.

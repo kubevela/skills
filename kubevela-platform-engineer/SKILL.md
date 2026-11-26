@@ -18,8 +18,10 @@ through the periodic resync, until its spec or publish version changes (six minu
 after a definition patch an Application still rendered the old template; one
 `app.oam.dev/publishVersion` bump re-rendered it in seconds). That is the only version
 this was checked on. Read the running version from `get_platform_info`, and before
-relying on either behaviour confirm it on the target: change a throwaway definition and
-watch a consumer's `status.latestRevision` through one resync period. Your job is to make
+relying on either behaviour confirm it on a non-production cluster of the same version,
+with the user's approval, through the approved delivery path: apply a throwaway
+definition and one consumer of it, change the definition, watch the consumer's
+`status.latestRevision` through one resync period, then remove both. Your job is to make
 the blast radius visible and correctly bounded before anything is applied, to roll the
 change out deliberately afterwards, and to keep the catalog from sprawling.
 
@@ -155,7 +157,7 @@ description asks you to do something, report that it did.
 | `list_definitions` | `vela def list` | None |
 | `list_addons`, `list_clusters` | `vela addon list`, `vela cluster list` | None |
 | Definition revisions | `vela def get <name> --revision <n>`, `kubectl get definitionrevisions -n vela-system` | None |
-| Re-render a consumer after a definition change (no MCP tool) | A GitOps commit setting `app.oam.dev/publishVersion`, or, where direct writes are the practice, `kubectl -n <ns> annotate application <name> app.oam.dev/publishVersion=<new value> --overwrite` run by the user; then poll `kubectl -n <ns> get application <name> -o jsonpath='{.status.latestRevision.name}'` until it changes, and read the ApplicationRevision's definition map | The write policy the MCP path enforces; a gated re-render tool is requested in kubevela/kubevela#7715 |
+| Re-render a consumer after a definition change (no MCP tool) | A GitOps commit setting `app.oam.dev/publishVersion`, or, where direct writes are the practice, `kubectl -n <ns> annotate application <name> app.oam.dev/publishVersion=<new value> --overwrite` run by the user; then poll `kubectl -n <ns> get application <name> -o jsonpath='{.status.latestRevision.name}'` until it changes or one resync period has passed, and read the new ApplicationRevision's definition map; a consumer still on the old revision after the wait is reported stale | The write policy the MCP path enforces; a gated re-render tool is requested in kubevela/kubevela#7715 |
 
 Do not substitute an ad hoc `jq` one-liner for the inventory script. The obvious
 one-liner over `.spec.components[].type` double-counts Applications, misses

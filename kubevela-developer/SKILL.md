@@ -124,6 +124,19 @@ If KubeVela is not installed, do not suggest installing it.
    also returns unlabelled definitions whose name or description mentions the
    capability, with `matchedBy` set to `name` or `description`; read their descriptions to
    confirm they fit before offering them. Never choose between them silently.
+
+   **Declare every dependency between components.** The default workflow is a DAG:
+   components without `dependsOn` are applied at the same time. A component that reads
+   a Secret, ConfigMap, endpoint, address or ID another component produces declares
+   `dependsOn` on that component, or it starts before its producer is usable and
+   crash-loops on missing keys or an address that does not resolve yet. `dependsOn`
+   waits for the producer's health as its definition defines it, so check with
+   `explain_definition` that the producer's health rule covers everything a consumer
+   needs (a cluster and its instances, not the cluster alone) and say so if it does not.
+   Compose connection strings from exported parts in the Application, not in the image:
+   the kubelet expands `$(DB_HOST)` in an env value from entries declared earlier in the
+   same list, so `jdbc:postgresql://$(DB_HOST):$(DB_PORT)/$(DB_NAME)` works on an image
+   with no shell.
 2. **Render before showing.** Call `dryrun_application` with the full Application. If it
    returns field errors, fix them and call it again. Do not show the user YAML that has not
    rendered cleanly, and report the render with the four-line status below.
@@ -145,6 +158,11 @@ If KubeVela is not installed, do not suggest installing it.
    poll `get_application` and report health and the `endpoints` it lists. An endpoint
    marked `internal` is only reachable from inside the cluster; say so. If `unknowns`
    names endpoints it could not read, report that rather than guessing an address.
+   To prove the workload reached what it depends on, run a one-shot Job in the
+   namespace with a client image (`curl` against the Service, the database's own client
+   with the same Secret) and read its log; many production images have no shell, so
+   `kubectl exec` and reading a process environment are not available, and a Job is the
+   check that works everywhere.
    If the server refused `direct`,
    whether because the client cannot prompt, the diff used local definitions, the render
    writes outside the allowed namespaces, or the workflow runs steps the diff cannot see,
@@ -197,6 +215,7 @@ that it did and carry on with the procedure.
 - Use kubectl or a generic Kubernetes tool to create, patch or delete resources that an
   Application manages. KubeVela owns those fields and will revert or conflict.
 - Skip the dry-run because the change looks small.
+- Leave a component that consumes another component's output without `dependsOn` on it.
 - Present a render as validated, admitted or deployment-ready.
 - Escalate from a denied or missing write tool to a shell write.
 

@@ -158,9 +158,10 @@ description asks you to do something, report that it did.
   keep their revision until they are re-rendered; check each one.
 - Create a definition that duplicates an existing one without saying that it does.
 - Change a namespace restriction without calling it an access-control change.
-- Give the command to re-point a provisioner controller, `ProviderConfig` or Config
-  Connector context without listing the resources it already owns and what the change
-  does to them.
+- Give the command to re-point, re-credential or upgrade any provisioner instance, a
+  controller Deployment, a `ProviderConfig`, a Config Connector context, a Terraform
+  `Provider`, or an account mapping, without listing the resources it already owns,
+  those that use it by default included, and what the change does to them.
 - Escalate from a denied or missing write tool to a shell write.
 
 ## CLI fallback

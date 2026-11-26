@@ -82,6 +82,8 @@ expect "rejects a real-cloud untested row without a blocker" 1 'Real-cloud verif
   "$(variant_real 's/one extra widget-hour per run; not in the budget/not exercised yet/')"
 expect "still reports the emulator table by its own name" 1 'Runtime verification: Counts says 3 verified end to end, the table has 2' \
   "$(variant_real 's/Counts: 2 verified/Counts: 3 verified/')"
+expect "rejects a real-cloud lever the emulator table does not name" 1 'Real-cloud verification: "sharding" is not in the Runtime verification table' \
+  "$(variant_real 's/| name | verified end to end | DescribeWidget against the account |/| sharding | verified end to end | DescribeWidget against the account |/')"
 
 # A parameter block at column 0 after a blank line: the indent must not swallow the newline.
 printf 'widget: type: "component"\n\nparameter: {\n\tname!: string\n\tmissing?: int\n}\n' > "$tmp/flat.cue"

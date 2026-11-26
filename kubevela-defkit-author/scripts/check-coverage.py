@@ -25,8 +25,8 @@ in the Lever column, so a parameter cannot ship without an outcome.
 
 A module that was also run against a real cloud account keeps a second section,
 "## Real-cloud verification", in the same format. When it is present it is checked
-by the same rules, except that it may cover a subset of the parameters: the
-emulator table stays the complete record.
+by the same rules, every lever in it must also be a row of the emulator table, and
+it may cover a subset of them: the emulator table stays the complete record.
 
 Exits 0 when the record is complete, 1 with one line per problem otherwise.
 """
@@ -157,8 +157,17 @@ def main():
     real_rows, real_body = section_rows(text, REAL_CLOUD_SECTION)
     real_counts = None
     if real_rows is not None:
-        real_problems, real_counts, _ = check_table(real_rows, real_body, REAL_CLOUD_SECTION)
+        real_problems, real_counts, real_levers = check_table(real_rows, real_body, REAL_CLOUD_SECTION)
         problems.extend(real_problems)
+        # a real-cloud row is a second verdict on a lever the emulator table
+        # already names, matched by its leading identifier as a whole word,
+        # the way parameters are matched below, so "size large" matches the
+        # emulator row "size, at creation and changed later"
+        named = " ".join(levers)
+        for lever in real_levers:
+            head = re.match(r"[A-Za-z_][A-Za-z0-9_.-]*", lever)
+            if not head or not re.search(r"(?<![A-Za-z0-9_])" + re.escape(head.group(0)) + r"(?![A-Za-z0-9_])", named):
+                problems.append(f'{REAL_CLOUD_SECTION}: "{lever}" is not in the {EMULATOR_SECTION} table')
 
     if args.cue:
         named = " ".join(levers)

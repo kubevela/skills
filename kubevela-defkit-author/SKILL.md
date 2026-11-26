@@ -41,32 +41,26 @@ version, trust column 1 and say so in the pull request.
 
 ## Outcome-altering forks stop at the user
 
-Discovery sometimes surfaces options that change *what gets built*, not just how:
-one service name covering several products (EMR on EC2, on EKS, or Serverless), a
-resource servable only through kinds with different runtime semantics, a request
-that two incompatible schemas could satisfy. Some choices are already decided and
-are not forks — but each rule decides exactly the choice it names and nothing more:
-the "Cloud services" rules below pick the provisioner family (ACK for AWS, Config
-Connector for GCP), the full-parity policy picks which fields are exposed, and a
-default recorded on the platform — a definition `list_definitions` marks `default`,
-or a namespace's declared delivery practice — picks among existing definitions.
-None of those picks which product a service name means or which resource kind's
-runtime semantics the user wants. Every outcome-altering fork that no such rule or
-recorded default decides stops at the user: one question, the discovered facts
-laid out per option (what exists, at what maturity, what the test endpoint
-supports), and a recommendation. Picking silently because one option is easier to
-verify is choosing the user's architecture for them.
+Discovery sometimes surfaces options that change *what gets built*, not just how: one
+service name covering several products (EMR on EC2, on EKS, or Serverless), a resource
+servable only through kinds with different runtime semantics, two incompatible schemas
+that could both satisfy the request. Some choices are already decided, and each rule
+decides exactly the choice it names: the "Cloud services" rules pick the provisioner
+family, the full-parity policy picks which fields are exposed, and a recorded default
+(a definition marked `default`, a namespace's declared delivery practice) picks among
+existing definitions. None of those picks which product a service name means or which
+kind's runtime semantics the user wants. Every fork no rule or recorded default decides
+stops at the user: one question, the discovered facts per option (what exists, at what
+maturity, what the test endpoint supports), and a recommendation. Picking silently
+because one option is easier to verify is choosing the user's architecture for them.
 
-The same rule applies below the level of architecture, to values. A value that is
-not inferable from the request, the provider's documentation, the CRD, or a
-recorded platform convention is asked for, not invented: a default the provider
-does not document, a name or identifier that will outlive the task, a credential
-or endpoint source, a capacity or retention number with cost implications. Two
-kinds of value are exempt. Test fixtures that exist only to exercise a lever and
-are torn down may be fabricated — and must look fabricated, never like real data.
-And sample Applications may carry illustrative values, since samples document
-shape, not the user's environment. Everything else that persists in the
-deliverable carries either a named source or the user's answer.
+The same rule applies to values. A value not inferable from the request, the provider's
+documentation, the CRD or a recorded platform convention is asked for, not invented: an
+undocumented default, a name that will outlive the task, a credential or endpoint source,
+a capacity or retention number with cost implications. Two kinds are exempt: test
+fixtures that only exercise a lever and are torn down may be fabricated, and must look
+fabricated; sample Applications may carry illustrative values, since samples document
+shape. Everything else that persists carries a named source or the user's answer.
 
 ## Sequence
 
@@ -165,10 +159,11 @@ deliverable carries either a named source or the user's answer.
    Call `dryrun_application` again with `serverCheck: true` against a cluster where the
    CRDs the definition emits are installed, such as a local cluster with the provider's
    CRDs. Every object must come back accepted; a rejection names the field to fix in the
-   Go. Nothing is stored. Offline, or without the CRDs, report the check as not performed,
-   say the shape is unverified, and do not call the definition ready to apply. The check
-   needs a namespace: create one named `<module>-check-<random>` and delete only that,
-   never a namespace that may already hold someone's work.
+   Go. The dry run stores none of the rendered objects. It does need a namespace, and
+   that one is real: create `<module>-check-<random>`, delete it when the check ends
+   whether it passed or not, and never touch a namespace that may hold someone's work.
+   Offline, or without the CRDs, report the check as not performed, say the shape is
+   unverified, and do not call the definition ready to apply.
 9. **Check the schema the consumer will get.** Call `describe_definition` against the
    local cluster after `vela def apply-module <dir>` there, or read the generated
    parameter block. Parameter names, types and usage strings are the contract; review them

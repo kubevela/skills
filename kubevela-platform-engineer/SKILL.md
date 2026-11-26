@@ -142,9 +142,12 @@ CUE.
   controller serves across namespaces, the resources naming the `ProviderConfig` plus
   those that fall to the default, the namespaces under the context, and for ACK the
   per-namespace account mappings and any role selectors. Two backends need two
-  identities in that unit: a second `ProviderConfig` named explicitly, a second
-  controller kept apart by cluster, namespace scope or a watch selector, or a second
-  account mapping; the delivery names which.
+  identities in that unit: for Crossplane a second provider config of either kind, the
+  cluster-scoped `ClusterProviderConfig` or the namespaced `ProviderConfig`, which every
+  separated resource names by `providerConfigRef.name` and `providerConfigRef.kind`,
+  since a resource that names none still falls to the `default` `ClusterProviderConfig`;
+  for a controller, a second instance kept apart by cluster, namespace scope or a watch
+  selector; for ACK, a second account mapping; the delivery names which.
 - Human approval gates stay with humans. Never call `resume_workflow`, `suspend_workflow`
   or `terminate_workflow`. This rule is identical in every KubeVela skill.
 

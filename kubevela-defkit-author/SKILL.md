@@ -128,8 +128,7 @@ deliverable carries either a named source or the user's answer.
    conditions (`AllConditions`), and not `Every` over output collections; it renders
    those outputs regardless. Assert such gating on the generated CUE (`def.ToCue()`
    for the template, `GetHealthPolicy()` for health) and let the dry-run prove the
-   evaluation. A test that expects the renderer to drop a compound-gated output cannot
-   pass.
+   evaluation; a test expecting the renderer to drop a compound-gated output cannot pass.
    A cloud-service definition also gets a runtime suite: Applications applied through
    KubeVela and the provisioner to an emulator, and every lever read back with the
    service's own API. Follow `references/emulator-tests.md` and start from the suite in
@@ -274,9 +273,8 @@ apply fails.
   template emits (`instance-`, `subnet-`), or `defkit.Health().At(ref)` for one named
   output, each applying the per-resource rule, with `.AllowEmpty()` where the count can
   be zero; `Every` judges only the outputs it selects. Where "usable" is knowable, add a
-  field rule as well:
-  endpoint present, port set, member count reached. Conditions mirror the provider's state
-  machine, not a client's ability to connect.
+  field rule as well: endpoint present, port set, member count reached. Conditions mirror
+  the provider's state machine, not a client's ability to connect.
 - **Several resources.** Aurora needs a subnet group, a cluster and at least one instance.
   Emit them as outputs of one component, ask before splitting them, and make the health
   rule cover each of them as above.

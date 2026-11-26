@@ -49,7 +49,7 @@ kubevela-platform-engineer/  Change definitions safely; tested consumer-inventor
 kubevela-defkit-author/      Author capabilities in Go with defkit, validate, render, deliver by PR
   assets/                    aws-dynamodb: a worked module with unit tests, samples and an emulator suite
   scripts/                   Check a runtime verification record; summarise the emulator's fidelity report
-  references/                defkit API map, worked examples from vela-go-definitions, pitfalls, emulator tests
+  references/                defkit API map, worked examples from vela-go-definitions, pitfalls, emulator and real-cloud tests
 clients/                     Setup for Claude Code, Codex, Cursor, Gemini CLI
 eval/                        Three-layer evaluation plan: structural, workflow, enforcement
 scripts/                     validate_skills.py, snapshot_crd_shape.py, snapshot-references.sh

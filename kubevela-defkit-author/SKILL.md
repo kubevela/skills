@@ -100,15 +100,12 @@ deliverable carries either a named source or the user's answer.
      them. Settings that only make sense together share one
      `Struct` or `Object`; mutually exclusive shapes use `OneOf` with `Variant`s.
      "only with billingMode PROVISIONED" in a usage string is the smell to replace.
-   - **Define a shape once.** A structure used by more than one parameter — an index
-     key schema shared by GSIs and LSIs — is one builder expression, registered with
-     `Helper(name, param)` and referenced by `.WithSchemaRef(name)` at every use, so
-     the CUE carries one `#Shape` and consumers see one definition. **The helper holds
-     the ELEMENT shape** (`Object`, never `Array`): the Array at each use site supplies
-     the single `[...]` wrapper, and registering an Array-built helper generates a
-     list-of-lists no real value unifies with — it compiles, passes validate-module,
-     and rejects every Application at admission (kubevela/kubevela#7570). Plain Go reuse
-     applies below that: one variable, not two transcriptions.
+   - **Define a shape once.** A structure used by more than one parameter is one builder
+     expression, registered with `Helper(name, param)` and referenced with
+     `.WithSchemaRef(name)` at every use, so the CUE carries one `#Shape`. **The helper
+     holds the ELEMENT shape** (`Object`, never `Array`): the Array at each use site
+     supplies the `[...]` wrapper; an Array-built helper generates a list-of-lists that
+     passes validate-module and rejects every Application at admission (kubevela/kubevela#7570).
    - **Defaults mirror the provider.** Where the service documents a default, state it
      with `.Default(...)` so `vela show` tells the truth; where the platform wants a
      safer opinion than the provider's, say so in the usage string — and for a
@@ -137,20 +134,20 @@ deliverable carries either a named source or the user's answer.
      point a controller that manages real cloud resources at an emulator, and never
      change the endpoint of an installed controller.
    - One emulator per cluster, shared: use the one that is running, deploy the pinned
-     `ghcr.io/kubevela/aws-emulator` release only when there is none. That image is a
-     repackaging of AWS's official emulator (aws/aws-emulator) at the same version, so
-     that release's fidelity report applies to it. A controller has one endpoint. Runs
-     stay apart by namespace and name prefix.
+     `ghcr.io/kubevela/aws-emulator` release (AWS's official emulator repackaged at the
+     same version, so its fidelity report applies) only when there is none. Runs stay
+     apart by namespace and name prefix.
    - Before the first spec, `get_platform_info` must show the controller's
      `endpointOverride` is the emulator. A controller without it talks to the real
      cloud: stop.
    - Read the emulator's fidelity report for the operations the definition calls, with
      `scripts/emulator-fidelity.py`, at the version the cluster runs.
    - One spec per lever, or per group of levers that only make sense together.
-   - This path is proven for DynamoDB on ACK only. For another AWS service, GCP, Azure
-     or a Crossplane provider,
-     `references/emulator-tests.md` says what carries over and what is not established;
-     do not present an untried emulator setup as verified.
+   - This path is proven for DynamoDB on ACK only; `references/emulator-tests.md` says
+     what carries over elsewhere. Do not present an untried emulator setup as verified.
+   - An emulator proves shapes, not timing, DNS, orderability, version floors or delete
+     behaviour. A lever earns a second, separate state only through a run against the
+     real cloud that the user owns and authorizes: `references/real-cloud-tests.md`.
 6. **Validate and generate.** Run `vela def validate-module <dir>`, then
    `vela def gen-module <dir> -o <out>`. A failure is a bug in the Go, not in the CUE; fix
    it at the source and regenerate. **A regeneration is a definition change even when no
@@ -169,14 +166,17 @@ deliverable carries either a named source or the user's answer.
    CRDs the definition emits are installed, such as a local cluster with the provider's
    CRDs. Every object must come back accepted; a rejection names the field to fix in the
    Go. Nothing is stored. Offline, or without the CRDs, report the check as not performed,
-   say the shape is unverified, and do not call the definition ready to apply.
+   say the shape is unverified, and do not call the definition ready to apply. The check
+   needs a namespace: create one named `<module>-check-<random>` and delete only that,
+   never a namespace that may already hold someone's work.
 9. **Check the schema the consumer will get.** Call `describe_definition` against the
    local cluster after `vela def apply-module <dir>` there, or read the generated
    parameter block. Parameter names, types and usage strings are the contract; review them
    as such.
 10. **Deliver by pull request.** Include the Go source, the tests, the sample Applications,
     the rendered output and the server check result; for a cloud service, also the
-    coverage summary table from "Coverage summary for cloud services". Give the reviewer
+    coverage summary table from "Coverage summary for cloud services" and every fixture
+    the Application depends on but does not own, with who creates it. Give the reviewer
     `vela def apply-module <dir> --dry-run` to preview what will be applied, and the user
     `vela def apply-module <dir>` for their own cluster. Do not apply the definition to a
     shared control plane directly; the platform-engineer skill covers how a definition
@@ -289,38 +289,32 @@ apply fails.
 - **Missing controllers and packages.** A lever can need a controller that is not
   installed: the service's provisioner itself, another ACK controller for a kind the
   resource references (a KMS key for bucket encryption), or another Crossplane provider
-  package. What can be offered depends on which is missing. An auxiliary lever's
-  controller can be installed or its parameter left out; when the service's own
-  provisioner is missing there is no resource shape to author against, so the choices
-  are installing it, switching family through the ask above, or not authoring yet — a
-  dropped parameter cannot stand in for it. Before offering an install, check whether
-  this session may perform it: `kubectl auth can-i create deployments -n <controller
-  namespace>` and `kubectl auth can-i create customresourcedefinitions` are the first
-  probes, and a yes is not yet sufficient — render the chart or package manifests and
-  check what they actually create (`helm template ... | kubectl apply --dry-run=server
-  -f -`, or `kubectl auth can-i` per rendered kind and verb) before treating write
-  access as established. Then ask; never decide alone.
-  - With write permission, ask the user one question: install the missing controller or
-    package now, or — for an auxiliary lever only — author the definition without that
-    parameter. Install only after they choose to, at the latest version compatible with
-    the running cluster.
+  package. An auxiliary lever's controller can be installed or its parameter left out;
+  when the service's own provisioner is missing there is no shape to author against, so
+  the choices are installing it, switching family through the ask above, or not
+  authoring yet. Before offering an install, check whether this session may perform it:
+  `kubectl auth can-i create deployments -n <controller namespace>` and
+  `kubectl auth can-i create customresourcedefinitions` first, then render the chart or
+  package manifests and check what they actually create (`helm template ... | kubectl
+  apply --dry-run=server -f -`) before treating write access as established. Then ask;
+  never decide alone.
+  - With write permission, ask one question: install the missing controller or package
+    now, or, for an auxiliary lever only, author without that parameter. Install only
+    after they choose to, at the latest version compatible with the running cluster.
   - Without write permission, ask whether to leave the parameter out (auxiliary levers
-    only), and give the exact install command for someone with access to run, pinned to
-    the latest compatible version looked up from the chart or package registry at that
-    moment, never from memory: for ACK,
+    only), and give the exact install command for someone with access, pinned to the
+    latest compatible version looked up at that moment, never from memory: for ACK,
     `helm install ack-<service> oci://public.ecr.aws/aws-controllers-k8s/<service>-chart --version <looked-up>`;
-    for Crossplane, `kubectl apply` of a `pkg.crossplane.io/v1` `Provider` manifest whose
-    `spec.package` pins the provider image to the looked-up version; for Config
-    Connector, `gcloud container clusters update <cluster> --update-addons ConfigConnector=ENABLED`
-    on GKE, or the configconnector-operator bundle pinned to the looked-up release
-    elsewhere.
+    for Crossplane, `kubectl apply` of a `pkg.crossplane.io/v1` `Provider` whose
+    `spec.package` pins the provider image; for Config Connector,
+    `gcloud container clusters update <cluster> --update-addons ConfigConnector=ENABLED`
+    on GKE, or the configconnector-operator bundle pinned to the looked-up release.
   On a disposable test cluster the install points the controller at the emulator from
-  the start; the values are in `references/emulator-tests.md`. After any install, wait
-  for the rollout and report an image pull or start failure instead of going on.
-  Either way, record the outcome: a parameter left out this way appears in the coverage
-  summary as the gap kind "not installed", naming the controller or package that would
-  provide it, and the decision is written into the module's docs per "Coverage summary
-  for cloud services", not only said in chat.
+  the start (`references/emulator-tests.md`). After any install, wait for the rollout
+  and report an image pull or start failure instead of going on. Either way, record the
+  outcome: a parameter left out this way appears in the coverage summary as the gap kind
+  "not installed", naming the controller or package, and the decision is written into
+  the module's docs, not only said in chat.
 - **Bootstrap objects.** Objects the definition's resources depend on — a Crossplane
   `ProviderConfig`, XRD or Composition, a `ConfigConnectorContext`, an ACK controller's
   configuration — are bootstrap, not component output, and never belong in Go code:
@@ -337,22 +331,14 @@ apply fails.
   the coverage table defined in "Coverage summary for cloud services" below. It is a
   required part of the deliverable, like the render report, not an optional extra.
 - **Levers are proven at runtime, not inferred.** The API server check validates
-  shape and says nothing about behaviour. A lever counts as working only after it
-  was exercised through the provisioner against its endpoint and read back through
-  the service's own API (the emulator's, in tests) — a bucket's versioning through
-  GetBucketVersioning, a table's key schema through DescribeTable. The provisioner's
-  Synced condition alone is not proof, twice over. First, ACK conditions carry no
-  observedGeneration, so after any spec change treat a True as stale until you see the
-  condition move: watch it leave its pre-update value (ACK passes through Unknown while
-  reconciling), or check that its lastTransitionTime postdates your change. Second, a
-  Terminal condition halts reconciliation while Synced keeps its last value — a lever is
-  proven only when ACK.ResourceSynced is True AND ACK.Terminal is absent or not True,
-  read in the same breath. Levers the endpoint cannot support are
-  findings, not failures (on AWS, the emulator's per-release fidelity report names many
-  of them before you run anything): isolate them (bisect the spec), capture the error as
-  evidence, and classify. Expect the exercise to surface real service semantics —
-  ownership versus grants, implicit versioning, destination validation — and fold
-  each one into the samples so consumers inherit the lesson.
+  shape and says nothing about behaviour. A lever counts as working only after it was
+  exercised through the provisioner against its endpoint and read back through the
+  service's own API: versioning through GetBucketVersioning, a key schema through
+  DescribeTable. A Synced condition alone is not proof: ACK conditions carry no
+  observedGeneration, and Terminal halts reconciliation while Synced keeps its last value
+  (`references/emulator-tests.md` has the waiting rules). Levers the endpoint cannot
+  support are findings, not failures: isolate, capture the error, classify, and fold
+  every service semantic the exercise surfaces into the samples.
 
 ## How to report a render
 
@@ -382,7 +368,8 @@ definition therefore ends with this table, built from three sources, none from m
 
 One row per lever of the service's create/update APIs, grouped so complete sections can
 be collapsed into one row (for example "GSIs: IndexName, KeySchema, Projection,
-ProvisionedThroughput"). The kinds of gap are marked differently, because they have
+ProvisionedThroughput"), plus one row for what an Application delete does, naming the
+provisioner's lever and its default. The kinds of gap are marked differently, because they have
 different fixes: a CRD gap needs a new controller release, a definition gap is a schema
 edit away, and a "not installed" gap (see "Missing controllers and packages") is one
 install away, by whoever has the access.
@@ -407,7 +394,9 @@ format `references/emulator-tests.md` defines, with one row per parameter and ex
 of three outcomes: *verified end to end* (exercised and read back, naming the API call),
 *endpoint-limited* (the endpoint cannot support it, with the error as evidence), or
 *untested* with what blocks the test. "Not exercised yet" is not a reason: when nothing
-blocks a lever, write its spec. Run `scripts/check-coverage.py docs/coverage.md --cue
+blocks a lever, write its spec. A real-cloud run adds a **Real-cloud verification**
+section in the same format (`references/real-cloud-tests.md`), kept apart from the
+emulator record. Run `scripts/check-coverage.py docs/coverage.md --cue
 <generated cue>` and fix what it reports before delivering. "Every parameter exposed"
 and "every lever working" are different claims; the doc must show which one each row has
 earned, and the split appears in the delivery message too: the coverage summary's closing
@@ -487,6 +476,8 @@ cluster. It only means external CUE packages were not loaded.
 - `references/pitfalls.md`: mistakes seen in review and how to avoid them.
 - `references/emulator-tests.md`: the runtime suite against an emulator and the record it
   produces.
+- `references/real-cloud-tests.md`: the separate, user-authorized run against a real
+  account: cost-aware shapes, delete semantics, fixtures, teardown, and its record.
 - `assets/aws-dynamodb`: a complete module to copy from. A DynamoDB table on ACK with
   unit tests, sample Applications, generated CUE, the emulator suite and its coverage
   record. Its README says how to run each part.

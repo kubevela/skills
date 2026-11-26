@@ -249,6 +249,24 @@ apply fails.
   `masterPasswordSecretRef` with `name` and `key` on an RDS Cluster; on Config Connector,
   the field's `valueFrom.secretKeyRef`, such as `spec.password.valueFrom.secretKeyRef` on
   an SQLUser.
+- **Connection details out.** A provisioned service exists to be used, so a definition
+  for anything a workload connects to also hands out what the connection needs:
+  endpoint, port, database or resource name, principal, and where the credential lives.
+  Expose one optional parameter that names an existing Secret in the Application's
+  namespace, document the keys it receives, and fill it with the provisioner's own
+  mechanism: on ACK a `services.k8s.aws/v1alpha1` `FieldExport` per key, from the
+  resource's field into `to: {kind: secret, name: <parameter>, key: <key>}`; on
+  Crossplane `spec.writeConnectionSecretToRef` or `spec.publishConnectionDetailsTo`; on
+  Config Connector the status fields the resource publishes, carried by a workflow step
+  or a Secret the resource itself writes. Pointing the parameter at the Secret that
+  already holds the password gives the workload one Secret with everything. Three facts
+  hold on every provisioner: the target Secret must exist before the export runs, because
+  exporters do not create it; a value the provisioner fills in after creation lives where
+  the provisioner puts it, which can be `spec` (ACK late-initializes an RDS port into
+  `spec.port`, and `status` has no port), so read the real object after a reconcile rather
+  than assume; and an export whose source field is unset never converges, so gate exports
+  of optional fields on the parameter that makes the source exist. Record the keys in the
+  module README and let the coverage doc carry the parameter as a platform lever.
 - **Health and status.** Use the rule `resource.health` gives. An ACK resource is ready
   when its `ACK.ResourceSynced` condition is `True` and its `ACK.Terminal` condition is
   absent or not `True` — Terminal halts reconciliation while Synced keeps its last

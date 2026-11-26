@@ -249,11 +249,10 @@ apply fails.
   `masterPasswordSecretRef` with `name` and `key` on an RDS Cluster; on Config Connector,
   the field's `valueFrom.secretKeyRef`, such as `spec.password.valueFrom.secretKeyRef` on
   an SQLUser.
-- **Connection details out.** A provisioned service exists to be used, so a definition
-  for anything a workload connects to also hands out what the connection needs: endpoint,
-  port, database or resource name, principal, where the credential lives. Expose one
-  optional parameter naming the Secret a workload will read, document its keys, and fill
-  it by one of three shapes:
+- **Connection details out.** A provisioned service exists to be used, so a definition for
+  anything a workload connects to also hands out what the connection needs: endpoint, port,
+  database or resource name, principal, where the credential lives. Expose one optional
+  parameter naming the Secret a workload reads, document its keys, fill it by one of:
   - **KubeVela's own workflow, the default.** A `read-object` step reads the reconciled
     resource, `status` and `spec` both, since a provisioner may late-initialize a
     connection field into `spec` (ACK puts an RDS port in `spec.port`), and an
@@ -261,21 +260,19 @@ apply fails.
   - **A per-key exporter** copies one field into a key of a Secret that must already
     exist, so it may target the credential Secret. ACK's `FieldExport` is this shape, but
     ACK's deprecation policy (aws-controllers-k8s.github.io/community/docs/community/deprecation-policy/)
-    lists it as deprecated with KRO as successor and controllers released from late 2025
-    ship it disabled: use it only when the pinned version serves it, and say so in the
-    coverage doc.
+    lists it as deprecated with KRO as successor, and controllers from late 2025 ship it
+    disabled: use it only when the pinned version serves it, and say so in the coverage doc.
   - **A connection-Secret writer** creates or overwrites a whole Secret of its own:
     Crossplane `writeConnectionSecretToRef` on managed resources and composites, the
     Terraform addon's `Configuration.writeConnectionSecretToRef`. Keep it separate from
     the credential Secret; the writer owns its content. Crossplane's
-    `publishConnectionDetailsTo` is not this shape: it writes through a `StoreConfig` to
-    an external secret store, an alpha feature behind `--enable-external-secret-stores`
-    and off by default, so use it only when the pinned Crossplane version enables it and
-    the workload can read that store, and say so in the coverage doc.
+    `publishConnectionDetailsTo` is not this shape: it writes through a `StoreConfig` to an
+    external secret store behind the alpha `--enable-external-secret-stores` flag, off by
+    default; use it only when the pinned version enables it and the workload can read that
+    store, and say so in the coverage doc.
   Everywhere: read the real object after a reconcile to learn where each value lands, and
-  gate optional fields on the parameter that makes the source exist, since an export of
-  an unset field never converges. Record the mechanism and the keys in the module README,
-  and let the coverage doc carry the parameter as a platform lever.
+  gate optional fields on the parameter that makes the source exist, since an export of an
+  unset field never converges. Record the mechanism and keys in the README and coverage doc.
 - **Health and status.** Use the rule `resource.health` gives. An ACK resource is ready
   when its `ACK.ResourceSynced` condition is `True` and its `ACK.Terminal` condition is
   absent or not `True` — Terminal halts reconciliation while Synced keeps its last

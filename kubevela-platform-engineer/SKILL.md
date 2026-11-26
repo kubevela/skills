@@ -126,9 +126,10 @@ CUE.
   administrative actions that stay in the CLI. Give the exact command and what it will
   do, and let the user run it.
 - **A provisioner instance is one endpoint and one identity.** An ACK controller
-  Deployment, a Crossplane `ProviderConfig`, a Config Connector context: each points at
-  one API endpoint with one credential, and every resource that references it is
-  reconciled against that endpoint. Changing where one points changes what every
+  Deployment, a Crossplane `ProviderConfig`, a Config Connector context, the Terraform
+  controller's `Provider` object, and whatever a provisioner added later uses for the
+  same purpose: each points at one API endpoint with one credential, and every resource
+  that references it is reconciled against that endpoint. Changing where one points changes what every
   resource it already holds will do: a controller re-pointed from an emulator to a real
   account creates every demo resource it holds for real, and one re-pointed between
   accounts starts creating in the new one and leaves the old resources orphaned. Before

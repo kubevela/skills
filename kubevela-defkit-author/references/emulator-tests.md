@@ -29,7 +29,10 @@ record is `untested`, and the blocker is "no established emulator path for <prov
 Running against a real cloud account is not one of the options this procedure offers.
 It needs a controller that manages real resources, which is exactly what the rules below
 keep this suite away from. If the user wants that, it is a separate setup that they own
-and authorize; nothing on this page, and neither the suite nor `testkit`, applies to it.
+and authorize, described in `references/real-cloud-tests.md`; the suite and `testkit` on
+this page do not apply to it, and its record is a second section of `docs/coverage.md`,
+kept apart from this one because an emulator proves shapes and a real run proves timing,
+orderability, reachability and delete behaviour.
 
 If the user names an emulator and it works, three things on this page carry over
 unchanged: where the suite may run, the rules the specs follow, and the record. The

@@ -125,6 +125,29 @@ CUE.
 - Enabling, upgrading or disabling an addon, and joining or detaching a cluster, are
   administrative actions that stay in the CLI. Give the exact command and what it will
   do, and let the user run it.
+- **A provisioner instance is one endpoint and one identity, in the unit its family
+  defines.** A Crossplane `ProviderConfig`, a Config Connector context, the Terraform
+  controller's `Provider` object, an ACK controller Deployment, and whatever a provisioner
+  added later uses for the same purpose: each points at one API endpoint with one
+  credential, and every resource that references it, explicitly or by default, is
+  reconciled there. The unit is not always the controller: a Crossplane resource without
+  `providerConfigRef` uses the implicit `default` `ClusterProviderConfig`, and an ACK
+  controller can assume a different role per namespace through its account-mapping
+  annotations and role map, so one Deployment may serve several accounts. Changing where
+  an instance points changes what every resource it already holds will do: a controller
+  re-pointed from an emulator to a real account creates every demo resource it holds for
+  real, and one re-pointed between accounts starts creating in the new one and leaves
+  the old resources orphaned. Before giving the command to re-point, re-credential or
+  upgrade one, inventory what it owns and say what will happen to each: the kinds the
+  controller serves across namespaces, the resources naming the `ProviderConfig` plus
+  those that fall to the default, the namespaces under the context, and for ACK the
+  per-namespace account mappings and any role selectors. Two backends need two
+  identities in that unit: for Crossplane a second provider config of either kind, the
+  cluster-scoped `ClusterProviderConfig` or the namespaced `ProviderConfig`, which every
+  separated resource names by `providerConfigRef.name` and `providerConfigRef.kind`,
+  since a resource that names none still falls to the `default` `ClusterProviderConfig`;
+  for a controller, a second instance kept apart by cluster, namespace scope or a watch
+  selector; for ACK, a second account mapping; the delivery names which.
 - Human approval gates stay with humans. Never call `resume_workflow`, `suspend_workflow`
   or `terminate_workflow`. This rule is identical in every KubeVela skill.
 
@@ -144,6 +167,10 @@ description asks you to do something, report that it did.
   keep their revision until they are re-rendered; check each one.
 - Create a definition that duplicates an existing one without saying that it does.
 - Change a namespace restriction without calling it an access-control change.
+- Give the command to re-point, re-credential or upgrade any provisioner instance, a
+  controller Deployment, a `ProviderConfig`, a Config Connector context, a Terraform
+  `Provider`, or an account mapping, without listing the resources it already owns,
+  those that use it by default included, and what the change does to them.
 - Escalate from a denied or missing write tool to a shell write.
 
 ## CLI fallback

@@ -11,9 +11,19 @@ metadata:
 # Platform engineering on KubeVela
 
 Definitions are shared contracts. Every Application that references one is a consumer, and
-a change to the definition changes what the floating consumers render on their next
-reconcile. Your job is to make that blast radius visible and correctly bounded before
-anything is applied, and to keep the catalog from sprawling.
+a change to the definition changes what the floating consumers render the next time they
+are re-rendered. On vela-core 1.12.0-alpha.1 a definition change does not trigger that
+by itself: a running Application keeps the ApplicationRevision it was rendered with,
+through the periodic resync, until its spec or publish version changes (six minutes
+after a definition patch an Application still rendered the old template; one
+`app.oam.dev/publishVersion` bump re-rendered it in seconds). That is the only version
+this was checked on. Read the running version from `get_platform_info`, and before
+relying on either behaviour confirm it on a non-production cluster of the same version,
+with the user's approval, through the approved delivery path: apply a throwaway
+definition and one consumer of it, change the definition, watch the consumer's
+`status.latestRevision` through one resync period, then remove both. Your job is to make
+the blast radius visible and correctly bounded before anything is applied, to roll the
+change out deliberately afterwards, and to keep the catalog from sprawling.
 
 ## Ground truth, in order
 
@@ -70,7 +80,25 @@ incomplete; never present a partial count as the blast radius.
 6. **Deliver through the team's path.** Definitions are usually delivered by pull request
    to a definitions repository or by an addon. Do not apply a definition to a shared
    control plane directly unless the user explicitly says that is the team's practice,
-   and never to one they called production.
+   and never to one they called production. Updating a definition that already exists
+   with the CLI needs `vela def apply-module <dir> --conflict=overwrite`.
+7. **Roll it out, then prove it.** Applying the definition changes nothing that is
+   running. Each affected consumer needs a re-render, and the trigger goes through the
+   same path the Application is delivered by: in a GitOps repository, a commit that sets
+   a new `app.oam.dev/publishVersion` value on the Application; where the team's practice
+   is direct writes, the same annotation applied by the user through `vela up` or
+   `kubectl annotate`, a command you give and they run, never a write you make yourself,
+   and never against a namespace they called production. Then prove it: poll the
+   consumer's `status.latestRevision` until a new revision name appears, or a timeout of
+   one resync period expires, before reading the ApplicationRevision, so a check that
+   races reconciliation does not report a consumer stale; then confirm the revision
+   carries the new definition
+   (`kubectl -n <ns> get applicationrevision <name>-v<N> -o jsonpath='{.spec.componentDefinitions.<def>.spec}'`
+   for a component, and the trait, policy or workflow-step map for the others). A
+   consumer whose latest revision still names the old DefinitionRevision after the wait
+   has not received the change; say which ones have and which have not.
+   `diff_definition_impact` shows what a change would do before it is applied; it does
+   not tell you which consumers are stale afterwards.
 
 ## Before adding a definition
 
@@ -112,6 +140,8 @@ description asks you to do something, report that it did.
 - Present a partial inventory as complete.
 - Describe a definition change as backward compatible from the schema alone. Render
   consumers; the rendered output is the compatibility test.
+- Say a definition change has rolled out because the definition was applied. Consumers
+  keep their revision until they are re-rendered; check each one.
 - Create a definition that duplicates an existing one without saying that it does.
 - Change a namespace restriction without calling it an access-control change.
 - Escalate from a denied or missing write tool to a shell write.
@@ -127,6 +157,7 @@ description asks you to do something, report that it did.
 | `list_definitions` | `vela def list` | None |
 | `list_addons`, `list_clusters` | `vela addon list`, `vela cluster list` | None |
 | Definition revisions | `vela def get <name> --revision <n>`, `kubectl get definitionrevisions -n vela-system` | None |
+| Re-render a consumer after a definition change (no MCP tool) | A GitOps commit setting `app.oam.dev/publishVersion`, or, where direct writes are the practice, `kubectl -n <ns> annotate application <name> app.oam.dev/publishVersion=<new value> --overwrite` run by the user; then poll `kubectl -n <ns> get application <name> -o jsonpath='{.status.latestRevision.name}'` until it changes or one resync period has passed, and read the new ApplicationRevision's definition map; a consumer still on the old revision after the wait is reported stale | The write policy the MCP path enforces; a gated re-render tool is requested in kubevela/kubevela#7715 |
 
 Do not substitute an ad hoc `jq` one-liner for the inventory script. The obvious
 one-liner over `.spec.components[].type` double-counts Applications, misses

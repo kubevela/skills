@@ -123,6 +123,12 @@ deliverable carries either a named source or the user's answer.
    table-driven entries live inside the specs. Cover defaults, parameter boundaries,
    invalid input that must be rejected, and the health and status expressions where the
    definition declares them. Run `go test ./...`. Fix failures before generating.
+   Know what the in-process renderer evaluates: `RenderAll` resolves `IsSet`/`NotSet`
+   gates and context names, but not numeric comparisons such as `Gte`, not compound
+   conditions (`AllConditions`), and not `Every` over output collections; it renders
+   those outputs regardless. Assert such gating on the generated CUE (`def.ToCue()`
+   for the template, `GetHealthPolicy()` for health) and let the dry-run prove the
+   evaluation; a test expecting the renderer to drop a compound-gated output cannot pass.
    A cloud-service definition also gets a runtime suite: Applications applied through
    KubeVela and the provisioner to an emulator, and every lever read back with the
    service's own API. Follow `references/emulator-tests.md` and start from the suite in
@@ -255,8 +261,23 @@ apply fails.
   `status.ackResourceMetadata.arn` and any endpoint in the custom status. A Crossplane
   managed resource is ready when its `Ready` and `Synced` conditions are `True`. A Config
   Connector resource is ready when its `Ready` condition is `True` with reason `UpToDate`.
+  That rule is per resource. **The component is healthy only when every resource it
+  emits passes it**, the primary and each auxiliary output, because a service that is "a
+  container plus members" reports its own ready state before the members exist: a
+  database cluster before its instances, a load balancer before its targets, a node pool
+  before its nodes, a topic before its subscriptions. The thing a consumer needs, an
+  address, a DNS name, an ID, usually arrives with the members, and emulators hide the
+  gap because they complete everything at once (`references/pitfalls.md`, item 18). In
+  defkit, keep the primary rule and `And` it with one
+  `defkit.Health().Every(defkit.OutputsWithPrefix(prefix), ...)` per name prefix the
+  template emits (`instance-`, `subnet-`), or `defkit.Health().At(ref)` for one named
+  output, each applying the per-resource rule, with `.AllowEmpty()` where the count can
+  be zero; `Every` judges only the outputs it selects. Where "usable" is knowable, add a
+  field rule as well: endpoint present, port set, member count reached. Conditions mirror
+  the provider's state machine, not a client's ability to connect.
 - **Several resources.** Aurora needs a subnet group, a cluster and at least one instance.
-  Emit them as outputs of one component, and ask before splitting them.
+  Emit them as outputs of one component, ask before splitting them, and make the health
+  rule cover each of them as above.
 - **Region and account.** On ACK they come from the controller's configuration for the
   namespace, not from definition parameters, unless the platform team says otherwise. On
   Crossplane, `spec.forProvider.region` is required, so set it from a parameter or the
